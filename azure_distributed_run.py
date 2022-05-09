@@ -10,7 +10,7 @@ from meter.datamodules.multitask_datamodule import MTDataModule
 
 import resource
 rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (20480, rlimit[1]))
+# resource.setrlimit(resource.RLIMIT_NOFILE, (20480, rlimit[1]))
 
 from pytorch_lightning.plugins.environments import ClusterEnvironment
 from pytorch_lightning.plugins.training_type import DDPPlugin
