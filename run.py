@@ -14,6 +14,9 @@ rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
 
 @ex.automain
 def main(_config):
+
+    # _config["num_gpus"] = 8
+
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
 
@@ -54,7 +57,7 @@ def main(_config):
         gpus=_config["num_gpus"],
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
-        accelerator="dp",#"ddp",
+        accelerator="ddp",#"ddp",
         benchmark=True,
         deterministic=True,
         max_epochs=_config["max_epoch"] if max_steps is None else 1000,
