@@ -10,7 +10,7 @@ from meter.datamodules.multitask_datamodule import MTDataModule
 
 import resource
 rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (20480, rlimit[1]))
+# resource.setrlimit(resource.RLIMIT_NOFILE, (20480, rlimit[1]))
 
 @ex.automain
 def main(_config):
@@ -54,7 +54,7 @@ def main(_config):
         gpus=_config["num_gpus"],
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
-        accelerator="ddp",
+        accelerator="dp",#"ddp",
         benchmark=True,
         deterministic=True,
         max_epochs=_config["max_epoch"] if max_steps is None else 1000,

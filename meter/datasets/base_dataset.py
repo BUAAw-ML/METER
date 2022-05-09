@@ -44,7 +44,8 @@ class BaseDataset(torch.utils.data.Dataset):
         self.draw_false_text = draw_false_text
         self.image_only = image_only
         self.data_dir = data_dir
-
+        print(data_dir)
+        print(names)
         if len(names) != 0:
             tables = [
                 pa.ipc.RecordBatchFileReader(
@@ -53,7 +54,7 @@ class BaseDataset(torch.utils.data.Dataset):
                 for name in names
                 if os.path.isfile(f"{data_dir}/{name}.arrow")
             ]
-
+            
             self.table_names = list()
             for i, name in enumerate(names):
                 self.table_names += [name] * len(tables[i])

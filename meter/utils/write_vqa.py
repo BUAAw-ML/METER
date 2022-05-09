@@ -159,6 +159,8 @@ def make_arrow(root, dataset_root):
             len(paths), len(annot_paths), len(annot),
         )
 
+
+
         bs = [
             path2rest(path, split, annotations, label2ans) for path in tqdm(annot_paths)
         ]

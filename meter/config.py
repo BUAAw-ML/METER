@@ -92,7 +92,7 @@ def config():
 @ex.named_config
 def task_mlm_itm_clip_bert():
     exp_name = "mlm_itm"
-    datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco"]#, "vg", "sbu", "gcc"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 4096
     max_epoch = 10

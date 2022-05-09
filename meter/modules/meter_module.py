@@ -61,9 +61,9 @@ class METERTransformerSS(pl.LightningModule):
                     )
 
                 if 'roberta' in config['tokenizer']:
-                    RobertaModel.from_pretrained(config['tokenizer'])
+                    RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
                 else:
-                    BertModel.from_pretrained(config['tokenizer'])
+                    BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
 
             torch.distributed.barrier()
 
@@ -76,9 +76,9 @@ class METERTransformerSS(pl.LightningModule):
             self.avgpool = nn.AdaptiveAvgPool1d(1)
 
         if 'roberta' in config['tokenizer']:
-            self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'])
+            self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
         else:
-            self.text_transformer = BertModel.from_pretrained(config['tokenizer'])
+            self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
 
         self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
