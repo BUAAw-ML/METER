@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataset import ConcatDataset
 from torch.utils.data.distributed import DistributedSampler
 import torch
-torch.distributed.init_process_group(backend="nccl")#,init_method="env://",world_size=1, rank=0)
+# torch.distributed.init_process_group(backend="nccl")#,init_method="env://",world_size=1, rank=0)
 
 from . import _datamodules
 

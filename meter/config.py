@@ -26,7 +26,7 @@ def config():
     seed = 0
     datasets = ["coco", "vg", "sbu", "gcc"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 4096  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    batch_size = 512#4096  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
     train_transform_keys = ["clip"]
