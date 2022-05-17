@@ -10,6 +10,8 @@ from . import heads, objectives, meter_utils
 from .clip_model import build_model, adapt_position_encoding
 from .swin_helpers import swin_adapt_position_encoding
 from transformers import RobertaConfig, RobertaModel
+from transformers import AutoModel
+
 
 class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
@@ -62,6 +64,8 @@ class METERTransformerSS(pl.LightningModule):
 
                 if 'roberta' in config['tokenizer']:
                     RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+                    # print("2AutoModel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    # AutoModel.from_pretrained('michiyasunaga/LinkBERT-base',cache_dir="/data/qbwang/public")
                 else:
                     BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
 
@@ -77,8 +81,11 @@ class METERTransformerSS(pl.LightningModule):
 
         if 'roberta' in config['tokenizer']:
             self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+            # print("AutoModel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            # self.text_transformer = AutoModel.from_pretrained('michiyasunaga/LinkBERT-base',cache_dir="/data/qbwang/public")
         else:
             self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+            
 
         self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
@@ -191,14 +198,19 @@ class METERTransformerSS(pl.LightningModule):
         text_masks = batch[f"text_masks"]
 
         text_embeds = self.text_transformer.embeddings(input_ids=text_ids)
+
         device = text_embeds.device
         input_shape = text_masks.size()
+        
         extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape, device)
+
         for layer in self.text_transformer.encoder.layer:
             text_embeds = layer(text_embeds, extend_text_masks)[0]
         text_embeds = self.cross_modal_text_transform(text_embeds)
 
+        # print(img.shape)
         image_embeds = self.vit_model(img)
+        # print(image_embeds.shape)
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
         extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size(), device)
@@ -212,6 +224,7 @@ class METERTransformerSS(pl.LightningModule):
         )
 
         x, y = text_embeds, image_embeds
+
         for text_layer, image_layer in zip(self.cross_modal_text_layers, self.cross_modal_image_layers):
             x1 = text_layer(x, y, extend_text_masks, extend_image_masks)
             y1 = image_layer(y, x, extend_image_masks, extend_text_masks)

@@ -7,6 +7,7 @@ from transformers import (
     DataCollatorForWholeWordMask,
     BertTokenizer,
     RobertaTokenizer,
+    AutoTokenizer,
 )
 
 
@@ -14,7 +15,8 @@ def get_pretrained_tokenizer(from_pretrained):
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
             if 'roberta' in from_pretrained:
-                RobertaTokenizer.from_pretrained(from_pretrained)
+                # AutoTokenizer.from_pretrained('michiyasunaga/LinkBERT-base', cache_dir="/data/qbwang/public") 
+                RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
             else:
                 BertTokenizer.from_pretrained(
                     from_pretrained, do_lower_case="uncased" in from_pretrained
@@ -22,7 +24,9 @@ def get_pretrained_tokenizer(from_pretrained):
         torch.distributed.barrier()
 
     if 'roberta' in from_pretrained:
-        return RobertaTokenizer.from_pretrained(from_pretrained)
+        # print("AutoTokenizer!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        # return AutoTokenizer.from_pretrained('michiyasunaga/LinkBERT-base', cache_dir="/data/qbwang/public")
+        return RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
     return BertTokenizer.from_pretrained(
         from_pretrained, do_lower_case="uncased" in from_pretrained
     )

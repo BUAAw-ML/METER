@@ -78,7 +78,6 @@ def make_arrow(root, dataset_root):
         _annot = defaultdict(dict)
         for q in tqdm(questions):
             _annot[q["image_id"]][q["question_id"]] = [q["question"]]
-
         annotations[split] = _annot
 
     all_major_answers = list()
@@ -140,9 +139,10 @@ def make_arrow(root, dataset_root):
         split_name = {
             "train": "train2014",
             "val": "val2014",
-            "test": "test2015",
-            "test-dev": "test2015",
+            "test": "test2014", #"test2015",
+            "test-dev": "test2014", #"test2015",
         }[split]
+
         paths = list(glob(f"{root}/{split_name}/*.jpg"))
         random.shuffle(paths)
         annot_paths = [
@@ -158,8 +158,6 @@ def make_arrow(root, dataset_root):
         print(
             len(paths), len(annot_paths), len(annot),
         )
-
-
 
         bs = [
             path2rest(path, split, annotations, label2ans) for path in tqdm(annot_paths)

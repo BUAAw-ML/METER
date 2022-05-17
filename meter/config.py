@@ -62,7 +62,7 @@ def config():
     learning_rate = 1e-5
     weight_decay = 0.01
     decay_power = 1
-    max_epoch = 100
+    max_epoch = 5 #100
     max_steps = 100000
     warmup_steps = 10000
     end_lr = 0
@@ -73,7 +73,7 @@ def config():
     get_recall_metric = False
 
     # PL Trainer Setting
-    resume_from = None
+    resume_from = None ##"/data/qbwang/METER/result/mlm_itm_seed0_from_/version_17/checkpoints/epoch=29-step=4169.ckpt"#
     fast_dev_run = False
     val_check_interval = 1.0
     test_only = False
@@ -95,7 +95,7 @@ def task_mlm_itm_clip_bert():
     datasets = ["coco"]#, "vg", "sbu", "gcc"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 4096
-    max_epoch = 10
+    max_epoch = 5#10
     max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
