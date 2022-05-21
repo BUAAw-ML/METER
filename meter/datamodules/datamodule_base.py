@@ -15,8 +15,9 @@ def get_pretrained_tokenizer(from_pretrained):
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
             if 'roberta' in from_pretrained:
-                # AutoTokenizer.from_pretrained('michiyasunaga/LinkBERT-base', cache_dir="/data/qbwang/public") 
                 RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
+            elif 'LinkBERT' in from_pretrained:
+                AutoTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
             else:
                 BertTokenizer.from_pretrained(
                     from_pretrained, do_lower_case="uncased" in from_pretrained
@@ -24,9 +25,12 @@ def get_pretrained_tokenizer(from_pretrained):
         torch.distributed.barrier()
 
     if 'roberta' in from_pretrained:
-        # print("AutoTokenizer!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # return AutoTokenizer.from_pretrained('michiyasunaga/LinkBERT-base', cache_dir="/data/qbwang/public")
+        print("roberta_Tokenizer!")
         return RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
+    elif 'LinkBERT' in from_pretrained:
+        print("LinkBERT_Tokenizer!")
+        return AutoTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
+    print("Bert_Tokenizer")
     return BertTokenizer.from_pretrained(
         from_pretrained, do_lower_case="uncased" in from_pretrained
     )

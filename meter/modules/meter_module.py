@@ -64,8 +64,8 @@ class METERTransformerSS(pl.LightningModule):
 
                 if 'roberta' in config['tokenizer']:
                     RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
-                    # print("2AutoModel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                    # AutoModel.from_pretrained('michiyasunaga/LinkBERT-base',cache_dir="/data/qbwang/public")
+                elif 'LinkBERT' in config['tokenizer']:
+                    AutoModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
                 else:
                     BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
 
@@ -80,10 +80,13 @@ class METERTransformerSS(pl.LightningModule):
             self.avgpool = nn.AdaptiveAvgPool1d(1)
 
         if 'roberta' in config['tokenizer']:
+            print("roberta!")
             self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
-            # print("AutoModel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            # self.text_transformer = AutoModel.from_pretrained('michiyasunaga/LinkBERT-base',cache_dir="/data/qbwang/public")
+        elif 'LinkBERT' in config['tokenizer']:
+            print("LinkBERT!")
+            self.text_transformer = AutoModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
         else:
+            print("BERT!")
             self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
             
 

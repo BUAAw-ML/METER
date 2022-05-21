@@ -313,6 +313,13 @@ def text_roberta_large():
     vocab_size = 50265
     input_text_embed_size = 1024
 
+@ex.named_config
+def text_LinkBERT_base():
+    tokenizer = "michiyasunaga/LinkBERT-base"
+    vocab_size = 28996
+    input_text_embed_size = 768
+
+
 # random augmentation
 @ex.named_config
 def imagenet_randaug():
