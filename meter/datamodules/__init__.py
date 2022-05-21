@@ -16,4 +16,5 @@ _datamodules = {
     "vqa": VQAv2DataModule,
     "nlvr2": NLVR2DataModule,
     "snli": SNLIDataModule,
+    "okvqa": VQAv2DataModule,
 }

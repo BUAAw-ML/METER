@@ -160,6 +160,29 @@ def task_finetune_vqa_clip_bert():
     image_size = 576
 
 @ex.named_config
+def task_finetune_okvqa_clip_bert():
+    exp_name = "finetune_okvqa"
+    datasets = ["okvqa"]
+    loss_names = _loss_names({"vqa": 1})
+    batch_size = 512
+    max_epoch = 100
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-6
+    val_check_interval = 1.0
+    lr_mult_head = 50
+    lr_mult_cross_modal = 5
+    tokenizer = "bert-base-uncased"
+    max_text_len = 50
+    input_text_embed_size = 768
+    vit = 'ViT-B/32'
+    train_transform_keys = ["clip"]
+    val_transform_keys = ["clip"]
+    input_image_embed_size = 768
+    image_size = 576
+
+@ex.named_config
 def task_finetune_irtr_coco_clip_bert():
     exp_name = "finetune_irtr_coco"
     datasets = ["coco"]
