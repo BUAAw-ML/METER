@@ -58,7 +58,7 @@ def config():
     drop_rate = 0.1
 
     # Optimizer Setting
-    optim_type = "adamw"
+    optim_type = "adam"#"adamw"
     learning_rate = 1e-5
     weight_decay = 0.01
     decay_power = 1
@@ -165,7 +165,7 @@ def task_finetune_okvqa_clip_bert():
     datasets = ["okvqa"]
     loss_names = _loss_names({"vqa": 1})
     batch_size = 512
-    max_epoch = 100
+    max_epoch = 200
     max_steps = None
     warmup_steps = 0.1
     draw_false_image = 0

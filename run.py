@@ -15,10 +15,15 @@ rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
 @ex.automain
 def main(_config):
 
+
+
     # _config["num_gpus"] = 8
 
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
+
+    print(f'learning rate: {_config["learning_rate"]}!')
+    print(f'optim_type: {_config["optim_type"]}!')
 
     dm = MTDataModule(_config, dist=True)
 
@@ -33,9 +38,15 @@ def main(_config):
         mode="max",
         save_last=True,
     )
+
+
+    from_path = f'{_config["load_path"].split("/")[-4]}+{_config["load_path"].split("/")[-3]}' if len(_config["load_path"].split("/")) >1 else ""
+
+
     logger = pl.loggers.TensorBoardLogger(
         _config["log_dir"],
-        name=f'{exp_name}_seed{_config["seed"]}_from_{_config["load_path"].split("/")[-1][:-5]}',
+        name=f'{exp_name}_seed{_config["seed"]}_from#{from_path}',
+        # name=f'{exp_name}_seed{_config["seed"]}_from_{_config["load_path"].split("/")[-1][:-5]}',
     )
 
     lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="step")

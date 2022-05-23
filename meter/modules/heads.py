@@ -31,6 +31,7 @@ class ITMHead(nn.Module):
 class MLMHead(nn.Module):
     def __init__(self, config, weight=None):
         super().__init__()
+        print("vocab_size of MLMHead: {}!".format(config.vocab_size))
         self.transform = BertPredictionHeadTransform(config)
         self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.bias = nn.Parameter(torch.zeros(config.vocab_size))

@@ -185,12 +185,12 @@ def make_arrow(root, dataset_root):
         table = pa.Table.from_pandas(dataframe)
 
         os.makedirs(dataset_root, exist_ok=True)
-        with pa.OSFile(f"{dataset_root}/vqav2_{split}.arrow", "wb") as sink:
+        with pa.OSFile(f"{dataset_root}/okvqa_{split}.arrow", "wb") as sink:
             with pa.RecordBatchFileWriter(sink, table.schema) as writer:
                 writer.write_table(table)
 
     table = pa.ipc.RecordBatchFileReader(
-        pa.memory_map(f"{dataset_root}/vqav2_val.arrow", "r")
+        pa.memory_map(f"{dataset_root}/okvqa_val.arrow", "r")
     ).read_all()
 
     pdtable = table.to_pandas()
@@ -201,10 +201,10 @@ def make_arrow(root, dataset_root):
     df1 = pa.Table.from_pandas(df1)
     df2 = pa.Table.from_pandas(df2)
 
-    with pa.OSFile(f"{dataset_root}/vqav2_trainable_val.arrow", "wb") as sink:
+    with pa.OSFile(f"{dataset_root}/okvqa_trainable_val.arrow", "wb") as sink:
         with pa.RecordBatchFileWriter(sink, df1.schema) as writer:
             writer.write_table(df1)
 
-    with pa.OSFile(f"{dataset_root}/vqav2_rest_val.arrow", "wb") as sink:
+    with pa.OSFile(f"{dataset_root}/okvqa_rest_val.arrow", "wb") as sink:
         with pa.RecordBatchFileWriter(sink, df2.schema) as writer:
             writer.write_table(df2)
