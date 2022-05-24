@@ -25,12 +25,12 @@ def get_pretrained_tokenizer(from_pretrained):
         torch.distributed.barrier()
 
     if 'roberta' in from_pretrained:
-        print("roberta_Tokenizer!")
+        print("pretrained_tokenizer: roberta_Tokenizer!")
         return RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
     elif 'LinkBERT' in from_pretrained:
-        print("LinkBERT_Tokenizer!")
+        print("pretrained_tokenizer: LinkBERT_Tokenizer!")
         return AutoTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
-    print("Bert_Tokenizer")
+    print("pretrained_tokenizer: Bert_Tokenizer")
     return BertTokenizer.from_pretrained(
         from_pretrained, do_lower_case="uncased" in from_pretrained
     )

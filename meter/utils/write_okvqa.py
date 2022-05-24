@@ -49,7 +49,7 @@ def path2rest(path, split, annotations, label2ans):
     return [binary, questions, answers, answer_labels, answer_scores, iid, qids, split]
 
 
-def make_arrow(root, dataset_root):
+def make_arrow(root, dataset_root, image_root):
     with open(f"{root}/OpenEnded_mscoco_train2014_questions.json", "r") as fp:
         questions_train2014 = json.load(fp)["questions"]
     with open(f"{root}/OpenEnded_mscoco_val2014_questions.json", "r") as fp:
@@ -77,7 +77,7 @@ def make_arrow(root, dataset_root):
         for q in tqdm(questions):
             _annot[q["image_id"]][q["question_id"]] = [q["question"]]
         annotations[split] = _annot
-
+        
     all_major_answers = list()
 
     for split, annots in zip(
@@ -98,9 +98,11 @@ def make_arrow(root, dataset_root):
             all_major_answers.append(gtruth)
         
     all_major_answers = [normalize_word(word) for word in tqdm(all_major_answers)]
-    counter = {k: v for k, v in Counter(all_major_answers).items() if v >= 9}
+    counter = {k: v for k, v in Counter(all_major_answers).items() if v >= 0}#9}
     ans2label = {k: i for i, k in enumerate(counter.keys())}
     label2ans = list(counter.keys())
+
+
 
     for split, annots in zip(
         ["train", "val"], [annotations_train2014, annotations_val2014],
@@ -137,6 +139,11 @@ def make_arrow(root, dataset_root):
                 filtered_annot[ik] = new_q
         annotations[split] = filtered_annot
 
+        # question_num  =  0
+        # for _, iv in filtered_annot.items():
+        #     question_num += len(iv)
+        # print(question_num)
+
     for split in [
         "train",
         "val"
@@ -147,7 +154,7 @@ def make_arrow(root, dataset_root):
             "val": "val2014"
         }[split]
         root_path = root.split("/")[0]
-        paths = list(glob(f"{root_path}/coco_2014/{split_name}/*.jpg"))
+        paths = list(glob(f"{image_root}/{split_name}/*.jpg"))
         random.shuffle(paths)
 
         annot_paths = [
@@ -157,9 +164,9 @@ def make_arrow(root, dataset_root):
         ]
 
         if len(paths) == len(annot_paths):
-            print("all images have caption annotations")
+            print("use all images")
         else:
-            print("not all images have caption annotations")
+            print("not use all images")
         print(
             len(paths), len(annot_paths), len(annot),
         )

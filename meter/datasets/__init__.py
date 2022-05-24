@@ -6,3 +6,4 @@ from .sbu_caption_dataset import SBUCaptionDataset
 from .vqav2_dataset import VQAv2Dataset
 from .nlvr2_dataset import NLVR2Dataset
 from .snli_dataset import SNLIDataset
+from .okvqa_dataset import OKVQADataset

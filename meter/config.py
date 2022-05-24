@@ -39,6 +39,7 @@ def config():
 
     # Text Setting
     vqav2_label_size = 3129
+    okvqa_label_size = 5117
     max_text_len = 40
     tokenizer = "bert-base-uncased"
     vocab_size = 30522
@@ -58,7 +59,7 @@ def config():
     drop_rate = 0.1
 
     # Optimizer Setting
-    optim_type = "adam"#"adamw"
+    optim_type = "adamw"
     learning_rate = 1e-5
     weight_decay = 0.01
     decay_power = 1
@@ -139,7 +140,7 @@ def task_finetune_nlvr2_clip_bert():
 @ex.named_config
 def task_finetune_vqa_clip_bert():
     exp_name = "finetune_vqa"
-    datasets = ["vqa"]
+    datasets = ["vqav2"]#["vqa"]
     loss_names = _loss_names({"vqa": 1})
     batch_size = 512
     max_epoch = 10

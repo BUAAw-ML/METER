@@ -24,9 +24,9 @@ def main(_config):
 
     print(f'learning rate: {_config["learning_rate"]}!')
     print(f'optim_type: {_config["optim_type"]}!')
+    print(f'batch_size: {_config["batch_size"]}!')
 
     dm = MTDataModule(_config, dist=True)
-
     model = METERTransformerSS(_config)
     exp_name = f'{_config["exp_name"]}'
 

@@ -49,7 +49,7 @@ def path2rest(path, split, annotations, label2ans):
     return [binary, questions, answers, answer_labels, answer_scores, iid, qids, split]
 
 
-def make_arrow(root, dataset_root):
+def make_arrow(root, dataset_root, image_root):
     with open(f"{root}/v2_OpenEnded_mscoco_train2014_questions.json", "r") as fp:
         questions_train2014 = json.load(fp)["questions"]
     with open(f"{root}/v2_OpenEnded_mscoco_val2014_questions.json", "r") as fp:
@@ -143,7 +143,7 @@ def make_arrow(root, dataset_root):
             "test-dev": "test2014", #"test2015",
         }[split]
 
-        paths = list(glob(f"{root}/{split_name}/*.jpg"))
+        paths = list(glob(f"{image_root}/{split_name}/*.jpg"))
         random.shuffle(paths)
         annot_paths = [
             path

@@ -140,8 +140,14 @@ def compute_snli(pl_module, batch):
 def compute_vqa(pl_module, batch):
     infer = pl_module.infer(batch, mask_text=False, mask_image=False)
     vqa_logits = pl_module.vqa_classifier(infer["cls_feats"])
+
+    if "okvqa" in pl_module.hparams.config["datasets"]:
+        vs = pl_module.hparams.config["okvqa_label_size"]
+    elif "vqav2" in pl_module.hparams.config["datasets"]:
+        vs = pl_module.hparams.config["vqav2_label_size"]
+
     vqa_targets = torch.zeros(
-        len(vqa_logits), pl_module.hparams.config["vqav2_label_size"]
+        len(vqa_logits), vs
     ).to(pl_module.device)
 
     vqa_labels = batch["vqa_labels"]

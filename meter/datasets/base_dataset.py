@@ -45,7 +45,7 @@ class BaseDataset(torch.utils.data.Dataset):
         self.image_only = image_only
         self.data_dir = data_dir
 
-        print(names)
+        print(f'load datasets: {names}!')
         if len(names) != 0:
             tables = [
                 pa.ipc.RecordBatchFileReader(

@@ -80,13 +80,13 @@ class METERTransformerSS(pl.LightningModule):
             self.avgpool = nn.AdaptiveAvgPool1d(1)
 
         if 'roberta' in config['tokenizer']:
-            print("roberta!")
+            print("text_transformer: roberta!")
             self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
         elif 'LinkBERT' in config['tokenizer']:
-            print("LinkBERT!")
+            print("text_transformer: LinkBERT!")
             self.text_transformer = AutoModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
         else:
-            print("BERT!")
+            print("text_transformer: BERT!")
             self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
             
 
@@ -111,7 +111,11 @@ class METERTransformerSS(pl.LightningModule):
         hs = self.hparams.config["hidden_size"]
 
         if self.hparams.config["loss_names"]["vqa"] > 0:
-            vs = self.hparams.config["vqav2_label_size"]
+            if "okvqa" in self.hparams.config["datasets"]:
+                vs = self.hparams.config["okvqa_label_size"]
+            elif "vqav2" in self.hparams.config["datasets"]:
+                vs = self.hparams.config["vqav2_label_size"]
+
             self.vqa_classifier = nn.Sequential(
                 nn.Linear(hs * 2, hs * 2),
                 nn.LayerNorm(hs * 2),
@@ -126,6 +130,9 @@ class METERTransformerSS(pl.LightningModule):
             and not self.hparams.config["test_only"]
         ):
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
+            print(ckpt.keys())
+            ckpt['state_dict'].pop("vqa_classifier.3.weight")
+            ckpt['state_dict'].pop("vqa_classifier.3.bias")
             state_dict = ckpt["state_dict"]
             if self.is_clip:
                 state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
