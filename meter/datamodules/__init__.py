@@ -7,6 +7,7 @@ from .vqav2_datamodule import VQAv2DataModule
 from .nlvr2_datamodule import NLVR2DataModule
 from .snli_datamodule import SNLIDataModule
 from .okvqa_datamodule import OKVQADataModule
+from .wit_caption_datamodule import WitCaptionDataModule
 
 _datamodules = {
     "vg": VisualGenomeCaptionDataModule,
@@ -19,4 +20,5 @@ _datamodules = {
     "snli": SNLIDataModule,
     "vqav2": VQAv2DataModule,
     "okvqa": OKVQADataModule,
+    "wit": WitCaptionDataModule,
 }

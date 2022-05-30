@@ -7,3 +7,4 @@ from .vqav2_dataset import VQAv2Dataset
 from .nlvr2_dataset import NLVR2Dataset
 from .snli_dataset import SNLIDataset
 from .okvqa_dataset import OKVQADataset
+from .wit_caption_datase import WitCaptionDataset
