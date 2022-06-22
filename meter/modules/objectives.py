@@ -421,17 +421,28 @@ def vqa_test_step(pl_module, batch, output):
             else pl_module.trainer.datamodule.dm_dicts["vqa"].id2answer
         )
     except:
+        # id2answer = (
+        #     pl_module.trainer.datamodule.dm_dicts["gqa_test"].id2answer
+        #     if "gqa_test" in pl_module.trainer.datamodule.dm_dicts
+        #     else pl_module.trainer.datamodule.dm_dicts["gqa"].id2answer
+        # )
         id2answer = (
-            pl_module.trainer.datamodule.dm_dicts["gqa_test"].id2answer
-            if "gqa_test" in pl_module.trainer.datamodule.dm_dicts
-            else pl_module.trainer.datamodule.dm_dicts["gqa"].id2answer
+            pl_module.trainer.datamodule.dm_dicts["okvqa_trainval"].id2answer
+            if "okvqa_trainval" in pl_module.trainer.datamodule.dm_dicts
+            else pl_module.trainer.datamodule.dm_dicts["okvqa"].id2answer
         )
         vqa_logits = output["vqa_logits"]
         vqa_preds = vqa_logits.argmax(dim=-1)
         vqa_preds = [id2answer[pred.item()] for pred in vqa_preds]
+
+        vqa_answers = []
+        for labels, scores in zip(batch["vqa_labels"], batch["vqa_scores"]):
+            vqa_answers.append([(id2answer[label],score)  for label,score in zip(labels, scores)])
+
         questions = batch["text"]
         qids = batch["qid"]
-        return {"qids": qids, "preds": vqa_preds, "gqa": True}
+        img_id = batch["img_id"]
+        return {"qids": qids, "preds": vqa_preds, "gqa": True, "questions": questions, "vqa_answers": vqa_answers, "img_id": img_id}
     vqa_logits = output["vqa_logits"]
     vqa_preds = vqa_logits.argmax(dim=-1)
     vqa_preds = [id2answer[pred.item()] for pred in vqa_preds]
@@ -447,17 +458,25 @@ def arc_test_step(pl_module, batch, output):
 def vqa_test_wrapup(outs, model_name):
     rank = torch.distributed.get_rank()
     qids, preds = list(), list()
+    questions, vqa_answers, img_id = list(), list(), list()
     gqa = False
+
     for out in outs:
         qids += out["qids"]
         preds += out["preds"]
         gqa = out['gqa']
+        if gqa:
+            questions += out["questions"]
+            vqa_answers += out["vqa_answers"]
+            img_id += out["img_id"] 
 
     rets = list()
-    for qid, pred in zip(qids, preds):
-        if gqa:
-            rets.append({"questionId": qid, "prediction": pred})
-        else:
+    
+    if gqa:
+        for qid, pred, questions, vqa_answers, img_id in zip(qids, preds, questions, vqa_answers, img_id):
+            rets.append({"img_id": img_id, "questionId": qid, "questions": questions, "prediction": pred, "vqa_answers": vqa_answers})
+    else:
+        for qid, pred in zip(qids, preds):
             rets.append({"question_id": qid, "answer": pred})
     with open(f"vqa_submit_{rank}.json", "w") as fp:
         json.dump(rets, fp, indent=4)
@@ -470,6 +489,7 @@ def vqa_test_wrapup(outs, model_name):
         for path in paths:
             with open(path, "r") as fp:
                 jsons += json.load(fp)
+        jsons.sort(key=lambda x: (x['img_id']))
         os.makedirs("result", exist_ok=True)
         with open(f"result/vqa_submit_{model_name}.json", "w") as fp:
             json.dump(jsons, fp, indent=4)

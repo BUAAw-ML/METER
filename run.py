@@ -21,10 +21,14 @@ def main(_config):
 
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
-
+    
+    print(f'exp_name: {_config["exp_name"]}!')
     print(f'learning rate: {_config["learning_rate"]}!')
     print(f'optim_type: {_config["optim_type"]}!')
     print(f'batch_size: {_config["batch_size"]}!')
+    print(f'max_epoch: {_config["max_epoch"]}!')
+    print(f'max_steps: {_config["max_steps"]}!')
+    print(f'resume_from: {_config["resume_from"]}!')
 
     dm = MTDataModule(_config, dist=True)
     model = METERTransformerSS(_config)

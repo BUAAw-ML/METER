@@ -3,7 +3,7 @@ import torch
 import io
 import pyarrow as pa
 import os
-
+import numpy as np
 from PIL import Image
 from ..transforms import keys_to_transforms
 
@@ -55,14 +55,28 @@ class BaseDataset(torch.utils.data.Dataset):
                 if os.path.isfile(f"{data_dir}/{name}.arrow")
             ]
             
+            # for i, name in enumerate(names):
+            #     if "wit" in name:
+            #         print(f"Process {name} caption!")
+            #         pandas_table = tables[i].to_pandas()
+
+            #         for index,_ in pandas_table.iterrows():
+            #             pandas_table.at[index,'caption'] = [pandas_table.at[index,'caption'][0].split('#')[0]]
+
+            #         tables[i] = pa.Table.from_pandas(pandas_table)
+
+
             self.table_names = list()
             for i, name in enumerate(names):
                 self.table_names += [name] * len(tables[i])
 
             self.table = pa.concat_tables(tables, promote=True)
+
+            print(f'Data table size: {len(self.table)}!')
             if text_column_name != "":
                 self.text_column_name = text_column_name
                 self.all_texts = self.table[text_column_name].to_pandas().tolist()
+
                 if type(self.all_texts[0][0]) == str:
                     self.all_texts = (
                         [list(set(texts)) for texts in self.all_texts]
@@ -100,6 +114,7 @@ class BaseDataset(torch.utils.data.Dataset):
     def get_raw_image(self, index, image_key="image"):
         index, caption_index = self.index_mapper[index]
         image_bytes = io.BytesIO(self.table[image_key][index].as_py())
+
         image_bytes.seek(0)
         if self.clip_transform:
             return Image.open(image_bytes).convert("RGBA")
@@ -124,7 +139,6 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def get_text(self, raw_index):
         index, caption_index = self.index_mapper[raw_index]
-
         text = self.all_texts[index][caption_index]
         encoding = self.tokenizer(
             text,
@@ -172,10 +186,15 @@ class BaseDataset(torch.utils.data.Dataset):
             except Exception as e:
                 print(f"Error while read file idx {index} in {self.names[0]} -> {e}")
                 index = random.randint(0, len(self.index_mapper) - 1)
+
+                index, caption_index = self.index_mapper[index]
+                text = self.all_texts[index][caption_index]
+                print(text)
         return ret
 
     def collate(self, batch, mlm_collator):
         batch_size = len(batch)
+
         keys = set([key for b in batch for key in b.keys()])
         dict_batch = {k: [dic[k] if k in dic else None for dic in batch] for k in keys}
 

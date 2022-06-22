@@ -1,4 +1,4 @@
-from ..datasets import ConceptualCaptionDataset
+from ..datasets import WitCaptionDataset
 from .datamodule_base import BaseDataModule
 
 
@@ -8,7 +8,7 @@ class WitCaptionDataModule(BaseDataModule):
 
     @property
     def dataset_cls(self):
-        return wit_caption_datase
+        return WitCaptionDataset
 
     @property
     def dataset_name(self):

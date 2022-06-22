@@ -74,7 +74,7 @@ def config():
     get_recall_metric = False
 
     # PL Trainer Setting
-    resume_from = None ##"/data/qbwang/METER/result/mlm_itm_seed0_from_/version_17/checkpoints/epoch=29-step=4169.ckpt"#
+    resume_from = None #"/data/qbwang/METER/result/mlm_itm_seed0_from#/version_44/epoch=15-step=2527.ckpt" #
     fast_dev_run = False
     val_check_interval = 1.0
     test_only = False
@@ -93,8 +93,8 @@ def config():
 @ex.named_config
 def task_mlm_itm_clip_bert():
     exp_name = "mlm_itm"
-    datasets = ["coco"]#, "vg", "sbu", "gcc"]
-    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    datasets = ["wit"]#, "vg", "sbu", "gcc"]#["coco"]#
+    loss_names = _loss_names({"itm": 1, "mlm": 1}) #
     batch_size = 4096
     max_epoch = 5#10
     max_steps = 100000
@@ -148,7 +148,7 @@ def task_finetune_vqa_clip_bert():
     warmup_steps = 0.1
     draw_false_image = 0
     learning_rate = 5e-6
-    val_check_interval = 0.1
+    val_check_interval = 1.0#0.1
     lr_mult_head = 50
     lr_mult_cross_modal = 5
     tokenizer = "bert-base-uncased"
@@ -159,6 +159,7 @@ def task_finetune_vqa_clip_bert():
     val_transform_keys = ["clip"]
     input_image_embed_size = 768
     image_size = 576
+    num_workers = 2
 
 @ex.named_config
 def task_finetune_okvqa_clip_bert():
@@ -318,6 +319,12 @@ def text_roberta_large():
 def text_LinkBERT_base():
     tokenizer = "michiyasunaga/LinkBERT-base"
     vocab_size = 28996
+    input_text_embed_size = 768
+
+@ex.named_config
+def text_t5_small():
+    tokenizer = "t5-small"
+    vocab_size = 32128
     input_text_embed_size = 768
 
 

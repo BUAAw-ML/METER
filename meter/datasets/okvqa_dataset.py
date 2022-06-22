@@ -27,15 +27,12 @@ class OKVQADataset(BaseDataset):
 
         index, question_index = self.index_mapper[index]
         qid = self.table["question_id"][index][question_index].as_py()
+        img_id = self.table["image_id"][index].as_py()
 
-        if self.split != "test":
-            answers = self.table["answers"][index][question_index].as_py()
-            labels = self.table["answer_labels"][index][question_index].as_py()
-            scores = self.table["answer_scores"][index][question_index].as_py()
-        else:
-            answers = list()
-            labels = list()
-            scores = list()
+
+        answers = self.table["answers"][index][question_index].as_py()
+        labels = self.table["answer_labels"][index][question_index].as_py()
+        scores = self.table["answer_scores"][index][question_index].as_py()
 
         return {
             "image": image_tensor,
@@ -44,4 +41,5 @@ class OKVQADataset(BaseDataset):
             "vqa_labels": labels,
             "vqa_scores": scores,
             "qid": qid,
+            "img_id": img_id,
         }

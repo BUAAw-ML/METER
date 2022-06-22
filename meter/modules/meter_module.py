@@ -10,7 +10,7 @@ from . import heads, objectives, meter_utils
 from .clip_model import build_model, adapt_position_encoding
 from .swin_helpers import swin_adapt_position_encoding
 from transformers import RobertaConfig, RobertaModel
-from transformers import AutoModel
+from transformers import AutoModel, T5Model
 
 
 class METERTransformerSS(pl.LightningModule):
@@ -66,6 +66,8 @@ class METERTransformerSS(pl.LightningModule):
                     RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
                 elif 'LinkBERT' in config['tokenizer']:
                     AutoModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+                elif 't5-small' in config['tokenizer']:
+                    T5Model.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
                 else:
                     BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
 
@@ -85,6 +87,9 @@ class METERTransformerSS(pl.LightningModule):
         elif 'LinkBERT' in config['tokenizer']:
             print("text_transformer: LinkBERT!")
             self.text_transformer = AutoModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+        elif 't5-small' in config['tokenizer']:
+            print("text_transformer: t5-small!")
+            self.text_transformer = T5Model.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
         else:
             print("text_transformer: BERT!")
             self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
@@ -130,15 +135,21 @@ class METERTransformerSS(pl.LightningModule):
             and not self.hparams.config["test_only"]
         ):
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
-            print(ckpt.keys())
-            ckpt['state_dict'].pop("vqa_classifier.3.weight")
-            ckpt['state_dict'].pop("vqa_classifier.3.bias")
+            # print(ckpt.keys())
+
             state_dict = ckpt["state_dict"]
             if self.is_clip:
                 state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
             else:
                 state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
-            self.load_state_dict(state_dict, strict=False)
+            
+            try:
+                self.load_state_dict(state_dict, strict=False)
+            except Exception as e:
+                print("process state_dict!")
+                state_dict.pop("vqa_classifier.3.weight")
+                state_dict.pop("vqa_classifier.3.bias")
+                self.load_state_dict(state_dict, strict=False)
 
 
         if self.hparams.config["loss_names"]["nlvr2"] > 0:

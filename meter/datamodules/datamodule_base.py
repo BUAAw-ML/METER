@@ -8,6 +8,7 @@ from transformers import (
     BertTokenizer,
     RobertaTokenizer,
     AutoTokenizer,
+    T5Tokenizer,
 )
 
 
@@ -18,6 +19,8 @@ def get_pretrained_tokenizer(from_pretrained):
                 RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
             elif 'LinkBERT' in from_pretrained:
                 AutoTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
+            elif 't5-small' in from_pretrained:
+                T5Tokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
             else:
                 BertTokenizer.from_pretrained(
                     from_pretrained, do_lower_case="uncased" in from_pretrained
@@ -30,6 +33,9 @@ def get_pretrained_tokenizer(from_pretrained):
     elif 'LinkBERT' in from_pretrained:
         print("pretrained_tokenizer: LinkBERT_Tokenizer!")
         return AutoTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
+    elif 't5-small' in from_pretrained:
+        print("pretrained_tokenizer: t5-small!")
+        return T5Tokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
     print("pretrained_tokenizer: Bert_Tokenizer")
     return BertTokenizer.from_pretrained(
         from_pretrained, do_lower_case="uncased" in from_pretrained
