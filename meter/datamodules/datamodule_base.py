@@ -1,5 +1,7 @@
 import torch
 
+from .data_utils import DataCollatorForEntityLanguageModeling
+
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from transformers import (
@@ -73,12 +75,15 @@ class BaseDataModule(LightningDataModule):
         tokenizer = _config["tokenizer"]
         self.tokenizer = get_pretrained_tokenizer(tokenizer)
         self.vocab_size = self.tokenizer.vocab_size
-
-        collator = (
-            DataCollatorForWholeWordMask
-            if _config["whole_word_masking"]
-            else DataCollatorForLanguageModeling
-        )
+        self.masking_strategy = _config["masking_strategy"]
+        if self.masking_strategy == "token_masking":
+            collator = (DataCollatorForLanguageModeling)
+        elif self.masking_strategy == "whole_word_masking":
+            collator = (DataCollatorForWholeWordMask)
+        elif self.masking_strategy == "entity_masking":
+            collator = (DataCollatorForEntityLanguageModeling)
+        else:
+            raise NotImplementedError()
 
         self.mlm_collator = collator(
             tokenizer=self.tokenizer, mlm=True, mlm_probability=_config["mlm_prob"]
@@ -104,6 +109,7 @@ class BaseDataModule(LightningDataModule):
             draw_false_text=self.draw_false_text,
             image_only=self.image_only,
             tokenizer=self.tokenizer,
+            masking_strategy=self.masking_strategy
         )
 
     def set_val_dataset(self):

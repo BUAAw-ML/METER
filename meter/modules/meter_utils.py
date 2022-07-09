@@ -195,95 +195,7 @@ def set_schedule(pl_module):
     decay_power = pl_module.hparams.config["decay_power"]
     optim_type = pl_module.hparams.config["optim_type"]
 
-    # print("Froze vit_model!")
-    # optimizer_grouped_parameters = [
-    #     {
-    #         "params": [
-    #             p
-    #             for n, p in pl_module.named_parameters()
-    #             if not any(nd in n for nd in no_decay)
-    #             and not any(bb in n for bb in head_names)
-    #             and not any(ht in n for ht in cross_modal_names)
-    #             and not any(ve in n for ve in visual_encoder)
-    #         ],
-    #         "weight_decay": wd,
-    #         "lr": lr,
-    #     },
-    #     {
-    #         "params": [
-    #             p
-    #             for n, p in pl_module.named_parameters()
-    #             if any(nd in n for nd in no_decay)
-    #             and not any(bb in n for bb in head_names)
-    #             and not any(ht in n for ht in cross_modal_names)
-    #             and not any(ve in n for ve in visual_encoder)
-    #         ],
-    #         "weight_decay": 0.0,
-    #         "lr": lr,
-    #     },
-    #     {
-    #         "params": [
-    #             p
-    #             for n, p in pl_module.named_parameters()
-    #             if not any(nd in n for nd in no_decay)
-    #             and any(bb in n for bb in head_names)
-    #             and not any(ht in n for ht in cross_modal_names)
-    #             and not any(ve in n for ve in visual_encoder)
-    #         ],
-    #         "weight_decay": wd,
-    #         "lr": lr * lr_mult_head,
-    #     },
-    #     {
-    #         "params": [
-    #             p
-    #             for n, p in pl_module.named_parameters()
-    #             if any(nd in n for nd in no_decay) and any(bb in n for bb in head_names)
-    #             and not any(ht in n for ht in cross_modal_names)
-    #             and not any(ve in n for ve in visual_encoder)
-    #         ],
-    #         "weight_decay": 0.0,
-    #         "lr": lr * lr_mult_head,
-    #     },
-    #     {
-    #         "params": [
-    #             p
-    #             for n, p in pl_module.named_parameters()
-    #             if not any(nd in n for nd in no_decay)
-    #             and not any(bb in n for bb in head_names)
-    #             and any(ht in n for ht in cross_modal_names)
-    #             and not any(ve in n for ve in visual_encoder)
-    #         ],
-    #         "weight_decay": wd,
-    #         "lr": lr * lr_mult_cross_modal,
-    #     },
-    #     {
-    #         "params": [
-    #             p
-    #             for n, p in pl_module.named_parameters()
-    #             if any(nd in n for nd in no_decay)
-    #             and not any(bb in n for bb in head_names)
-    #             and any(ht in n for ht in cross_modal_names)
-    #             and not any(ve in n for ve in visual_encoder)
-    #         ],
-    #         "weight_decay": 0.0,
-    #         "lr": lr * lr_mult_cross_modal,
-    #     },
-
-    #     {
-    #         "params": [
-    #             p
-    #             for n, p in pl_module.named_parameters()
-    #             if  not any(nd in n for nd in no_decay)
-    #             and not any(bb in n for bb in head_names)
-    #             and not any(ht in n for ht in cross_modal_names)
-    #             and any(ve in n for ve in visual_encoder)
-    #         ],
-    #         "weight_decay": 0.0,
-    #         "lr": 0.0,
-    #     }
-    # ]
-
-
+    print("Froze vit_model!")
     optimizer_grouped_parameters = [
         {
             "params": [
@@ -292,6 +204,7 @@ def set_schedule(pl_module):
                 if not any(nd in n for nd in no_decay)
                 and not any(bb in n for bb in head_names)
                 and not any(ht in n for ht in cross_modal_names)
+                and not any(ve in n for ve in visual_encoder)
             ],
             "weight_decay": wd,
             "lr": lr,
@@ -303,6 +216,7 @@ def set_schedule(pl_module):
                 if any(nd in n for nd in no_decay)
                 and not any(bb in n for bb in head_names)
                 and not any(ht in n for ht in cross_modal_names)
+                and not any(ve in n for ve in visual_encoder)
             ],
             "weight_decay": 0.0,
             "lr": lr,
@@ -314,6 +228,7 @@ def set_schedule(pl_module):
                 if not any(nd in n for nd in no_decay)
                 and any(bb in n for bb in head_names)
                 and not any(ht in n for ht in cross_modal_names)
+                and not any(ve in n for ve in visual_encoder)
             ],
             "weight_decay": wd,
             "lr": lr * lr_mult_head,
@@ -324,6 +239,7 @@ def set_schedule(pl_module):
                 for n, p in pl_module.named_parameters()
                 if any(nd in n for nd in no_decay) and any(bb in n for bb in head_names)
                 and not any(ht in n for ht in cross_modal_names)
+                and not any(ve in n for ve in visual_encoder)
             ],
             "weight_decay": 0.0,
             "lr": lr * lr_mult_head,
@@ -335,6 +251,7 @@ def set_schedule(pl_module):
                 if not any(nd in n for nd in no_decay)
                 and not any(bb in n for bb in head_names)
                 and any(ht in n for ht in cross_modal_names)
+                and not any(ve in n for ve in visual_encoder)
             ],
             "weight_decay": wd,
             "lr": lr * lr_mult_cross_modal,
@@ -346,11 +263,94 @@ def set_schedule(pl_module):
                 if any(nd in n for nd in no_decay)
                 and not any(bb in n for bb in head_names)
                 and any(ht in n for ht in cross_modal_names)
+                and not any(ve in n for ve in visual_encoder)
             ],
             "weight_decay": 0.0,
             "lr": lr * lr_mult_cross_modal,
         },
+
+        {
+            "params": [
+                p
+                for n, p in pl_module.named_parameters()
+                if  not any(nd in n for nd in no_decay)
+                and not any(bb in n for bb in head_names)
+                and not any(ht in n for ht in cross_modal_names)
+                and any(ve in n for ve in visual_encoder)
+            ],
+            "weight_decay": 0.0,
+            "lr": 0.0,
+        }
     ]
+
+
+    # optimizer_grouped_parameters = [
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in pl_module.named_parameters()
+    #             if not any(nd in n for nd in no_decay)
+    #             and not any(bb in n for bb in head_names)
+    #             and not any(ht in n for ht in cross_modal_names)
+    #         ],
+    #         "weight_decay": wd,
+    #         "lr": lr,
+    #     },
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in pl_module.named_parameters()
+    #             if any(nd in n for nd in no_decay)
+    #             and not any(bb in n for bb in head_names)
+    #             and not any(ht in n for ht in cross_modal_names)
+    #         ],
+    #         "weight_decay": 0.0,
+    #         "lr": lr,
+    #     },
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in pl_module.named_parameters()
+    #             if not any(nd in n for nd in no_decay)
+    #             and any(bb in n for bb in head_names)
+    #             and not any(ht in n for ht in cross_modal_names)
+    #         ],
+    #         "weight_decay": wd,
+    #         "lr": lr * lr_mult_head,
+    #     },
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in pl_module.named_parameters()
+    #             if any(nd in n for nd in no_decay) and any(bb in n for bb in head_names)
+    #             and not any(ht in n for ht in cross_modal_names)
+    #         ],
+    #         "weight_decay": 0.0,
+    #         "lr": lr * lr_mult_head,
+    #     },
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in pl_module.named_parameters()
+    #             if not any(nd in n for nd in no_decay)
+    #             and not any(bb in n for bb in head_names)
+    #             and any(ht in n for ht in cross_modal_names)
+    #         ],
+    #         "weight_decay": wd,
+    #         "lr": lr * lr_mult_cross_modal,
+    #     },
+    #     {
+    #         "params": [
+    #             p
+    #             for n, p in pl_module.named_parameters()
+    #             if any(nd in n for nd in no_decay)
+    #             and not any(bb in n for bb in head_names)
+    #             and any(ht in n for ht in cross_modal_names)
+    #         ],
+    #         "weight_decay": 0.0,
+    #         "lr": lr * lr_mult_cross_modal,
+    #     },
+    # ]
 
 
 

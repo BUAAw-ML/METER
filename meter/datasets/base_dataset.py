@@ -1,3 +1,4 @@
+from genericpath import exists
 import random
 import torch
 import io
@@ -6,9 +7,24 @@ import os
 import numpy as np
 from PIL import Image
 from ..transforms import keys_to_transforms
+import re
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+from transformers import BertTokenizer
+import tqdm
+import pickle
+
+from transformers import (
+    DataCollatorForLanguageModeling,
+    DataCollatorForWholeWordMask,
+    BertTokenizer,
+    RobertaTokenizer,
+    AutoTokenizer,
+    T5Tokenizer,
+)
 
 
 class BaseDataset(torch.utils.data.Dataset):
+
     def __init__(
         self,
         data_dir: str,
@@ -22,6 +38,7 @@ class BaseDataset(torch.utils.data.Dataset):
         draw_false_text=0,
         image_only=False,
         tokenizer=None,
+        masking_strategy='token_masking'
     ):
         """
         data_dir : where dataset file *.arrow lives; existence should be guaranteed via DataModule.prepare_data
@@ -44,6 +61,8 @@ class BaseDataset(torch.utils.data.Dataset):
         self.draw_false_text = draw_false_text
         self.image_only = image_only
         self.data_dir = data_dir
+
+        self.masking_strategy = masking_strategy
 
         print(f'load datasets: {names}!')
         if len(names) != 0:
@@ -69,13 +88,19 @@ class BaseDataset(torch.utils.data.Dataset):
             self.table_names = list()
             for i, name in enumerate(names):
                 self.table_names += [name] * len(tables[i])
-
             self.table = pa.concat_tables(tables, promote=True)
+
+            print(f'Columns of data table!:{self.table.to_pandas().columns.values}')
+
+
+            # print(self.table.to_pandas()['caption_entities'])
 
             print(f'Data table size: {len(self.table)}!')
             if text_column_name != "":
                 self.text_column_name = text_column_name
                 self.all_texts = self.table[text_column_name].to_pandas().tolist()
+                if self.masking_strategy == 'entity_masking':
+                    self.text_entities = self.table['caption_entities'].to_pandas().tolist()
 
                 if type(self.all_texts[0][0]) == str:
                     self.all_texts = (
@@ -101,8 +126,27 @@ class BaseDataset(torch.utils.data.Dataset):
                     self.index_mapper[j] = (i, _j)
                     j += 1
         else:
-            for i in range(len(self.table)):
+            for i in range(len(self.table)): 
                 self.index_mapper[i] = (i, None)
+        
+
+
+        if self.masking_strategy == 'entity_masking':
+            self.tokenizer = tokenizer#BertTokenizer.from_pretrained("bert-base-uncased")#tokenizer
+            if 'roberta' in tokenizer.name_or_path:
+                self.text_entities_mask = self.get_entities_roberta()
+
+            elif 'bert' in tokenizer.name_or_path:
+                self.text_entities_mask = self.get_entities_bert()
+            else:
+                raise NotImplementedError()
+            # data_entities_file = f'{data_dir}/{len(self.table)}.pkl'
+            # if exists(data_entities_file):
+            #     self.text_entities = pickle.load(open(data_entities_file, 'r'))
+            # else:
+            #     self.text_entities = self.get_entities()
+            #     pickle.dump(self.text_entities, open(data_entities_file, 'w'))
+
 
     @property
     def corpus(self):
@@ -147,12 +191,25 @@ class BaseDataset(torch.utils.data.Dataset):
             max_length=self.max_text_len,
             return_special_tokens_mask=True,
         )
-        return {
-            "text": (text, encoding),
-            "img_index": index,
-            "cap_index": caption_index,
-            "raw_index": raw_index,
-        }
+
+        # encoding["raw_index"] = raw_index
+        # print(self.split)
+        # print(self.masking_strategy)
+        if self.masking_strategy == 'entity_masking':
+            return {
+                "text": (text, encoding, self.text_entities_mask[index][caption_index]),
+                "img_index": index,
+                "cap_index": caption_index,
+                "raw_index": raw_index
+            }
+        else:
+
+            return {
+                "text": (text, encoding),
+                "img_index": index,
+                "cap_index": caption_index,
+                "raw_index": raw_index
+            }
 
     def get_false_text(self, rep):
         random_index = random.randint(0, len(self.index_mapper) - 1)
@@ -165,7 +222,10 @@ class BaseDataset(torch.utils.data.Dataset):
             max_length=self.max_text_len,
             return_special_tokens_mask=True,
         )
-        return {f"false_text_{rep}": (text, encoding)}
+        if self.masking_strategy == 'entity_masking':
+            return {f"false_text_{rep}": (text, encoding, self.text_entities_mask[index][caption_index])}
+        else:
+            return {f"false_text_{rep}": (text, encoding)}
 
     def get_suite(self, index):
         result = None
@@ -187,12 +247,15 @@ class BaseDataset(torch.utils.data.Dataset):
                 print(f"Error while read file idx {index} in {self.names[0]} -> {e}")
                 index = random.randint(0, len(self.index_mapper) - 1)
 
-                index, caption_index = self.index_mapper[index]
-                text = self.all_texts[index][caption_index]
-                print(text)
+                # index, caption_index = self.index_mapper[index]
+                # text = self.all_texts[index][caption_index]
+                # print(text)
         return ret
 
     def collate(self, batch, mlm_collator):
+
+        # print(isinstance(mlm_collator, DataCollatorForWholeWordMask))
+
         batch_size = len(batch)
 
         keys = set([key for b in batch for key in b.keys()])
@@ -239,9 +302,18 @@ class BaseDataset(torch.utils.data.Dataset):
         if len(txt_keys) != 0:
             texts = [[d[0] for d in dict_batch[txt_key]] for txt_key in txt_keys]
             encodings = [[d[1] for d in dict_batch[txt_key]] for txt_key in txt_keys]
+
             draw_text_len = len(encodings)
             flatten_encodings = [e for encoding in encodings for e in encoding]
+
             flatten_mlms = mlm_collator(flatten_encodings)
+
+            if len(dict_batch["text"][0])==3: #self.masking_strategy == 'entity_masking':# and self.split == 'train':
+
+                # print(self.tokenizer.tokenize(dict_batch["text"][0][0]))
+                text_entities_mask = [[d[2] for d in dict_batch[txt_key]] for txt_key in txt_keys]
+                flatten_text_entities_mask  = np.array([e for text_entitie_mask  in text_entities_mask  for e in text_entitie_mask])
+                flatten_mlms["labels"].masked_fill_(torch.tensor(flatten_text_entities_mask), value=-100)
 
             for i, txt_key in enumerate(txt_keys):
                 texts, encodings = (
@@ -272,3 +344,129 @@ class BaseDataset(torch.utils.data.Dataset):
                 dict_batch[f"{txt_key}_masks"] = attention_mask
 
         return dict_batch
+
+
+    def get_entities_roberta(self):
+        
+        text_entities_mask = []
+        for index, item in enumerate(tqdm.tqdm(self.all_texts, desc = "Extract entities!")):
+            item_entities_mask = []
+
+            # for _, entity in enumerate(self.text_entities[index]):
+            #     encoding_entities_ids.append(self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(entity)))
+
+            for caption_index, _ in enumerate(item):
+                
+                text = self.all_texts[index][caption_index]
+                # print(text)
+                # print(self.tokenizer.tokenize(text))
+                encoding = self.tokenizer(
+                    text,
+                    padding="max_length",
+                    truncation=True,
+                    max_length=self.max_text_len,
+                    return_special_tokens_mask=True,
+                )
+
+                item_entities_mask.append(self.exclude_non_entities_roberta(encoding["input_ids"], self.text_entities[index], encoding["special_tokens_mask"]))
+            text_entities_mask.append(item_entities_mask)
+            # print(item_entities_mask)
+            # exit()
+
+        return text_entities_mask 
+
+
+    def exclude_non_entities_roberta(self, inputs, entities, special_tokens_mask):
+        """Exclude non-entity tokens from token masking."""
+        # print(entities)
+        # print(len(entities))
+        sentence_entities_positions = []
+        # sign =False
+        # count = 0
+        for entity_text in entities:
+            # entity_text= entity_text.replace(' -','-')
+            # entity_text= entity_text.replace('- ','-')
+            for i in range(len(inputs)):
+                if inputs[i] == 2:
+                    break
+                for token_num in range(1, 4):
+                    cur_tokens_text = self.tokenizer.decode(inputs[i : i + token_num])
+                    if cur_tokens_text.lower().strip() == entity_text.lower().strip():
+                        #   or \
+                        # cur_tokens_text.lower().strip() == entity_text.lower().strip()+'s' or \
+                        # cur_tokens_text.lower().strip() == entity_text.lower().strip()+'es' or \
+                        # cur_tokens_text.lower().strip() == entity_text.lower().strip()[:-1]+'es'
+                        # print(self.tokenizer.decode(entity_id))
+                        # print(cur_tokens_text)
+                        sequence_ids = list(range(i, i + token_num))
+                        sentence_entities_positions.extend(sequence_ids)
+                        # sign = True
+                        break
+                     
+                    elif cur_tokens_text.lower().strip() not in entity_text.lower().strip():
+                        break
+        #     if sign == True:
+        #         count += 1
+        # print(count / len(entities))
+
+        # print(len(sentence_entities_positions))
+        new_stm = []
+        for idx, _ in enumerate(special_tokens_mask):
+            if idx in sentence_entities_positions:
+                new_stm.append(0)
+            else:
+                new_stm.append(1)
+
+        return new_stm
+
+
+    def get_entities_bert(self):
+        
+        text_entities_mask = []
+        for index, item in enumerate(tqdm.tqdm(self.all_texts, desc = "Extract entities!")):
+            item_entities_mask = []
+            encoding_entities_ids = []
+            # print(self.text_entities[index])
+            for _, entity in enumerate(self.text_entities[index]):
+                encoding_entities_ids.append(self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(entity)))
+            
+            for caption_index, _ in enumerate(item):
+                text = self.all_texts[index][caption_index]
+                # print(text)
+                # print(self.tokenizer.tokenize(text))
+                encoding = self.tokenizer(
+                    text,
+                    padding="max_length",
+                    truncation=True,
+                    max_length=self.max_text_len,
+                    return_special_tokens_mask=True,
+                )
+
+                item_entities_mask.append(self.exclude_non_entities_bert(encoding["input_ids"], encoding_entities_ids, encoding["special_tokens_mask"]))
+            text_entities_mask.append(item_entities_mask)
+            # print(item_entities_mask)
+
+        return text_entities_mask 
+
+
+    def exclude_non_entities_bert(self, inputs, entities_tokens_ids, special_tokens_mask):
+        """Exclude non-entity tokens from token masking."""
+
+        sentence_entities_positions = []
+        
+        for entity_id in entities_tokens_ids:
+            for i in range(len(inputs)):
+                
+                if inputs[i : i + len(entity_id)] == entity_id:
+                    # print(self.tokenizer.decode(entity_id))
+                    sequence_ids = list(range(i, i + len(entity_id)))
+                    sentence_entities_positions.extend(sequence_ids)
+
+        new_stm = []
+        for idx, _ in enumerate(special_tokens_mask):
+            if idx in sentence_entities_positions:
+                new_stm.append(False)
+            else:
+                new_stm.append(True)
+                
+        return new_stm

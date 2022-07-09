@@ -43,7 +43,7 @@ def config():
     max_text_len = 40
     tokenizer = "bert-base-uncased"
     vocab_size = 30522
-    whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
+    masking_strategy = "token_masking"  # note that whole_word_masking does not work for RoBERTa
     mlm_prob = 0.15
     draw_false_text = 0
 
@@ -99,7 +99,7 @@ def task_mlm_itm_clip_bert():
     max_epoch = 5#10
     max_steps = 100000
     warmup_steps = 0.1
-    whole_word_masking = True
+    masking_strategy = "whole_word_masking"
 
     vocab_size = 30522
     max_text_len = 50

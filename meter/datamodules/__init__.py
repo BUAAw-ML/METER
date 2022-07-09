@@ -8,6 +8,7 @@ from .nlvr2_datamodule import NLVR2DataModule
 from .snli_datamodule import SNLIDataModule
 from .okvqa_datamodule import OKVQADataModule
 from .wit_caption_datamodule import WitCaptionDataModule
+from .data_utils import DataCollatorForEntityLanguageModeling
 
 _datamodules = {
     "vg": VisualGenomeCaptionDataModule,
@@ -22,3 +23,5 @@ _datamodules = {
     "okvqa": OKVQADataModule,
     "wit": WitCaptionDataModule,
 }
+
+save_special_tokens_mask = {}

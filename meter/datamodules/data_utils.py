@@ -4,6 +4,18 @@ from typing import Any, Optional, Tuple
 import torch
 from transformers import DataCollatorForLanguageModeling
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+import re
+
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import random
+import torch
+
+from transformers.file_utils import PaddingStrategy
+from transformers.tokenization_utils_base import BatchEncoding, PreTrainedTokenizerBase
+
 
 
 @dataclass
@@ -15,44 +27,48 @@ class DataCollatorForEntityLanguageModeling(DataCollatorForLanguageModeling):
     tokenizer: PreTrainedTokenizerBase
     mask_probability: float = 0.8
     mlm: bool = True
-    mlm_probability: float = 0.15
+    mlm_probability: float = 1 #0.15
     pad_to_multiple_of: Optional[int] = None
     tf_experimental_compile: bool = False
     return_tensors: str = "pt"
     entities_file_path: str = "entities.txt"
 
+    
+
     def __post_init__(self):
         super().__post_init__()
+ 
+        # Exclude non entity tokens from Token Masking
+        # with open("entities.txt", "r") as f:
+        #     entities = f.read().split("\n")
 
-    def exclude_non_entities(self, inputs, entities_tokens_ids, special_tokens_mask):
-        """Exclude non-entity tokens from token masking."""
-        all_entities_positions = []
+        # entities_tokens = [self.tokenizer.tokenize(' '.join(re.split('_',entity.split("\"")[1].split("(")[0]))) for entity in entities]
 
-        # get exception ids
-        for instance_ids in inputs.tolist():
-            sentence_entities_positions = []
+        # self.entities_tokens_ids = []
+        # for tokenized_entity in entities_tokens:
+        #     entity_id = self.tokenizer.convert_tokens_to_ids(tokenized_entity)
+        #     # print(tokenized_entity)
 
-            for entity_id in entities_tokens_ids:
-                for i in range(len(instance_ids)):
-                    if instance_ids[i : i + len(entity_id)] == entity_id:
-                        sequence_ids = list(range(i, i + len(entity_id)))
-                        sentence_entities_positions.extend(sequence_ids)
+        #     # decod = self.tokenizer.decode(entity_id)
+        #     # if decod == 'A':
+        #     #     print(tokenized_entity)
+        #     #     print(len(tokenized_entity)) #1
+        #     #     print(len(tokenized_entity[0])) #1
+        #     if len(tokenized_entity) == 0:
+        #         continue 
+        #     elif len(tokenized_entity) >1:
+        #         self.entities_tokens_ids.append(entity_id)
 
-            all_entities_positions.append(sentence_entities_positions)
+        #     elif len(tokenized_entity[0]) > 1 and tokenized_entity[0] != 'Are':
+        #         self.entities_tokens_ids.append(entity_id)
+        #     else:
+        #          print(tokenized_entity)
+                
+        # print(f'The number of entities: {len(self.entities_tokens_ids)}!')
 
-        new_special_tokens_mask = []
 
-        # manipulate special tokens mask list by excluding
-        for stm_idx, stm in enumerate(special_tokens_mask):
-            new_stm = []
-            for idx, _ in enumerate(stm):
-                if idx in all_entities_positions[stm_idx]:
-                    new_stm.append(False)
-                else:
-                    new_stm.append(True)
-            new_special_tokens_mask.append(new_stm)
+        # self.count = 0
 
-        return torch.tensor(new_special_tokens_mask)
 
     def torch_mask_tokens(
         self, inputs: Any, special_tokens_mask: Optional[Any] = None
@@ -65,7 +81,9 @@ class DataCollatorForEntityLanguageModeling(DataCollatorForLanguageModeling):
         labels = inputs.clone()
         # We sample a few tokens in each sequence for MLM training
         # (with probability `self.mlm_probability`)
+
         probability_matrix = torch.full(labels.shape, self.mlm_probability)
+
         if special_tokens_mask is None:
             special_tokens_mask = [
                 self.tokenizer.get_special_tokens_mask(
@@ -77,19 +95,10 @@ class DataCollatorForEntityLanguageModeling(DataCollatorForLanguageModeling):
         else:
             special_tokens_mask = special_tokens_mask.bool()
 
-        # Exclude non entity tokens from Token Masking
-        with open(self.entities_file_path, "r") as f:
-            entities = f.read().split("\n")
 
-        entities_tokens = [self.tokenizer.tokenize(entity) for entity in entities]
-        entities_tokens_ids = [
-            self.tokenizer.convert_tokens_to_ids(tokenized_entity)
-            for tokenized_entity in entities_tokens
-        ]
-
-        special_tokens_mask = self.exclude_non_entities(
-            inputs, entities_tokens_ids, special_tokens_mask
-        )
+        # special_tokens_mask = self.exclude_non_entities(
+        #     inputs, self.entities_tokens_ids, special_tokens_mask
+        # )
 
         # CLS and other tokens are excluded from the token masking
         probability_matrix.masked_fill_(special_tokens_mask, value=0.0)
@@ -101,6 +110,7 @@ class DataCollatorForEntityLanguageModeling(DataCollatorForLanguageModeling):
             torch.bernoulli(torch.full(labels.shape, self.mask_probability)).bool()
             & masked_indices
         )
+
         inputs[indices_replaced] = self.tokenizer.convert_tokens_to_ids(
             self.tokenizer.mask_token
         )
@@ -118,6 +128,61 @@ class DataCollatorForEntityLanguageModeling(DataCollatorForLanguageModeling):
 
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
+   
+    # def exclude_non_entities(self, inputs, entities_tokens_ids, special_tokens_mask):
+    #     """Exclude non-entity tokens from token masking."""
+
+    #     global save_special_tokens_mask
+
+    #     all_entities_positions = []
+
+    #     # get exception ids
+    #     for instance_ids in inputs.tolist():
+    #         sentence_entities_positions = []
+
+    #         special_tokens_mask_identifier = '-'.join(map(str,instance_ids))
+    #         if 1:# special_tokens_mask_identifier not in self.save_special_tokens_mask.keys():
+
+    #             for entity_id in entities_tokens_ids:
+
+    #                 for i in range(len(instance_ids)):
+                        
+    #                     if instance_ids[i : i + len(entity_id)] == entity_id:
+    #                         # print(self.tokenizer.decode(entity_id))
+    #                         sequence_ids = list(range(i, i + len(entity_id)))
+    #                         sentence_entities_positions.extend(sequence_ids)
+    #         else:
+    #             print("1111111111111111111111")
+    #             sentence_entities_positions.extend([-1])
+    #         sentence_entities_positions.extend([special_tokens_mask_identifier])
+    #         # print(f"sentence_entities_positions!{sentence_entities_positions}")
+
+    #         all_entities_positions.append(sentence_entities_positions)
+        
+    #     # print(all_entities_positions)
+    #     new_special_tokens_mask = []
+
+    #     # manipulate special tokens mask list by excluding
+    #     for stm_idx, stm in enumerate(special_tokens_mask):
+    #         if 0:#all_entities_positions[stm_idx][0] == -1:
+    #             print("22222222222222222222222")
+    #             new_special_tokens_mask.append(save_special_tokens_mask[all_entities_positions[stm_idx][-1]])
+    #         else:
+    #             new_stm = []
+    #             for idx, _ in enumerate(stm):
+    #                 if idx in all_entities_positions[stm_idx]:
+    #                     new_stm.append(False)
+    #                 else:
+    #                     new_stm.append(True)
+    #             new_special_tokens_mask.append(new_stm)
+                
+    #             save_special_tokens_mask[all_entities_positions[stm_idx][-1]] = new_stm
+    #     # self.count += 8
+    #     print(len(save_special_tokens_mask.keys()))
+    #     # print(f"new_special_tokens_mask!{new_special_tokens_mask}")
+    #     return torch.tensor(new_special_tokens_mask)
+
+
 
 
 # # Copyright 2020 The HuggingFace Team. All rights reserved.

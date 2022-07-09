@@ -29,6 +29,9 @@ def main(_config):
     print(f'max_epoch: {_config["max_epoch"]}!')
     print(f'max_steps: {_config["max_steps"]}!')
     print(f'resume_from: {_config["resume_from"]}!')
+    print(f'masking_strategy: {_config["masking_strategy"]}!')
+    print(f'mlm_prob: {_config["mlm_prob"]}!')
+    
 
     dm = MTDataModule(_config, dist=True)
     model = METERTransformerSS(_config)
