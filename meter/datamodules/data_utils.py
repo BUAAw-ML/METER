@@ -77,6 +77,7 @@ class DataCollatorForEntityLanguageModeling(DataCollatorForLanguageModeling):
         Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random,
         10% original.
         """
+        # print(self.mlm_probability)
 
         labels = inputs.clone()
         # We sample a few tokens in each sequence for MLM training

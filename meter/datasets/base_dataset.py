@@ -12,6 +12,7 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 from transformers import BertTokenizer
 import tqdm
 import pickle
+import pandas as pd
 
 from transformers import (
     DataCollatorForLanguageModeling,
@@ -64,6 +65,9 @@ class BaseDataset(torch.utils.data.Dataset):
 
         self.masking_strategy = masking_strategy
 
+        self.entity_mlm_probability = 0.0
+        print(f'entity_mlm_probability: {self.entity_mlm_probability}!')
+
         print(f'load datasets: {names}!')
         if len(names) != 0:
             tables = [
@@ -92,8 +96,9 @@ class BaseDataset(torch.utils.data.Dataset):
 
             print(f'Columns of data table!:{self.table.to_pandas().columns.values}')
 
-
-            # print(self.table.to_pandas()['caption_entities'])
+            # pd.set_option('max_colwidth',1000)
+            # print(self.table.to_pandas()[:20][['caption','caption_entities']])
+            # exit()
 
             print(f'Data table size: {len(self.table)}!')
             if text_column_name != "":
@@ -133,6 +138,10 @@ class BaseDataset(torch.utils.data.Dataset):
 
         if self.masking_strategy == 'entity_masking':
             self.tokenizer = tokenizer#BertTokenizer.from_pretrained("bert-base-uncased")#tokenizer
+
+            self.texts_entity_mask_ratio = 0
+            self.texts_num = 0
+
             if 'roberta' in tokenizer.name_or_path:
                 self.text_entities_mask = self.get_entities_roberta()
 
@@ -146,6 +155,8 @@ class BaseDataset(torch.utils.data.Dataset):
             # else:
             #     self.text_entities = self.get_entities()
             #     pickle.dump(self.text_entities, open(data_entities_file, 'w'))
+            print(f'Average masking ratio: { self.texts_entity_mask_ratio / self.texts_num}!')
+            # exit()
 
 
     @property
@@ -306,14 +317,22 @@ class BaseDataset(torch.utils.data.Dataset):
             draw_text_len = len(encodings)
             flatten_encodings = [e for encoding in encodings for e in encoding]
 
+            
             flatten_mlms = mlm_collator(flatten_encodings)
-
+            # print(mlm_collator.mlm)
             if len(dict_batch["text"][0])==3: #self.masking_strategy == 'entity_masking':# and self.split == 'train':
-
+                
                 # print(self.tokenizer.tokenize(dict_batch["text"][0][0]))
                 text_entities_mask = [[d[2] for d in dict_batch[txt_key]] for txt_key in txt_keys]
+                # print(text_entities_mask)
                 flatten_text_entities_mask  = np.array([e for text_entitie_mask  in text_entities_mask  for e in text_entitie_mask])
+                # print(flatten_mlms["labels"].shape)
+                # print(torch.tensor(flatten_text_entities_mask).shape)
                 flatten_mlms["labels"].masked_fill_(torch.tensor(flatten_text_entities_mask), value=-100)
+                flatten_mlms["input_ids"].masked_fill_(torch.tensor(1- flatten_text_entities_mask), value=self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token))
+                # print(flatten_mlms["input_ids"])
+                # print(flatten_mlms["labels"])
+                # exit()
 
             for i, txt_key in enumerate(txt_keys):
                 texts, encodings = (
@@ -399,12 +418,16 @@ class BaseDataset(torch.utils.data.Dataset):
                         # print(self.tokenizer.decode(entity_id))
                         # print(cur_tokens_text)
                         sequence_ids = list(range(i, i + token_num))
-                        sentence_entities_positions.extend(sequence_ids)
+
+                        if random.random() >= self.entity_mlm_probability:
+                            sentence_entities_positions.extend(sequence_ids)
                         # sign = True
                         break
                      
                     elif cur_tokens_text.lower().strip() not in entity_text.lower().strip():
                         break
+        self.texts_entity_mask_ratio += len(sentence_entities_positions)/len(special_tokens_mask)
+        self.texts_num += 1
         #     if sign == True:
         #         count += 1
         # print(count / len(entities))
@@ -445,6 +468,7 @@ class BaseDataset(torch.utils.data.Dataset):
                 item_entities_mask.append(self.exclude_non_entities_bert(encoding["input_ids"], encoding_entities_ids, encoding["special_tokens_mask"]))
             text_entities_mask.append(item_entities_mask)
             # print(item_entities_mask)
+            # exit()
 
         return text_entities_mask 
 
@@ -458,9 +482,13 @@ class BaseDataset(torch.utils.data.Dataset):
             for i in range(len(inputs)):
                 
                 if inputs[i : i + len(entity_id)] == entity_id:
-                    # print(self.tokenizer.decode(entity_id))
+                    
                     sequence_ids = list(range(i, i + len(entity_id)))
-                    sentence_entities_positions.extend(sequence_ids)
+                    if random.random() > 0.7:
+                        # print(self.tokenizer.decode(entity_id))
+                        sentence_entities_positions.extend(sequence_ids)
+        self.texts_entity_mask_ratio += len(sentence_entities_positions)/len(special_tokens_mask)
+        self.texts_num += 1
 
         new_stm = []
         for idx, _ in enumerate(special_tokens_mask):

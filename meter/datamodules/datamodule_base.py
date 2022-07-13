@@ -78,16 +78,27 @@ class BaseDataModule(LightningDataModule):
         self.masking_strategy = _config["masking_strategy"]
         if self.masking_strategy == "token_masking":
             collator = (DataCollatorForLanguageModeling)
+            self.mlm_collator = collator(
+            tokenizer=self.tokenizer, mlm=True, mlm_probability=_config["mlm_prob"]
+            )
         elif self.masking_strategy == "whole_word_masking":
             collator = (DataCollatorForWholeWordMask)
+            self.mlm_collator = collator(
+            tokenizer=self.tokenizer, mlm=True, mlm_probability=_config["mlm_prob"]
+            )
         elif self.masking_strategy == "entity_masking":
-            collator = (DataCollatorForEntityLanguageModeling)
+            # collator = (DataCollatorForEntityLanguageModeling)
+            # self.mlm_collator = collator(
+            # tokenizer=self.tokenizer, mlm=True, mlm_probability=_config["mlm_prob"]
+            # )
+            collator = (DataCollatorForLanguageModeling)
+            self.mlm_collator = collator(
+            tokenizer=self.tokenizer, mlm=False
+            )
         else:
             raise NotImplementedError()
 
-        self.mlm_collator = collator(
-            tokenizer=self.tokenizer, mlm=True, mlm_probability=_config["mlm_prob"]
-        )
+
         self.setup_flag = False
 
     @property
