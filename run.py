@@ -31,6 +31,8 @@ def main(_config):
     print(f'resume_from: {_config["resume_from"]}!')
     print(f'masking_strategy: {_config["masking_strategy"]}!')
     print(f'mlm_prob: {_config["mlm_prob"]}!')
+    print(f'loss_names: {_config["loss_names"]}!')
+    print(f'max_text_len rate: {_config["max_text_len"]}!')
     
 
     dm = MTDataModule(_config, dist=True)
@@ -97,3 +99,4 @@ def main(_config):
         trainer.fit(model, datamodule=dm)
     else:
         trainer.test(model, datamodule=dm)
+
