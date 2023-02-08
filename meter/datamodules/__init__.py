@@ -8,6 +8,9 @@ from .nlvr2_datamodule import NLVR2DataModule
 from .snli_datamodule import SNLIDataModule
 from .okvqa_datamodule import OKVQADataModule
 from .wit_caption_datamodule import WitCaptionDataModule
+from .foilcoco_datamodule import FoilCOCODataModule
+from .aokvqa_datamodule import AOKVQADataModule
+
 from .data_utils import DataCollatorForEntityLanguageModeling
 
 _datamodules = {
@@ -22,6 +25,8 @@ _datamodules = {
     "vqav2": VQAv2DataModule,
     "okvqa": OKVQADataModule,
     "wit": WitCaptionDataModule,
+    "foilcoco": FoilCOCODataModule,
+    "aokvqa": AOKVQADataModule,
 }
 
 save_special_tokens_mask = {}

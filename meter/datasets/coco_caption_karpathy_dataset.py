@@ -7,8 +7,10 @@ class CocoCaptionKarpathyDataset(BaseDataset):
         assert split in ["train", "val", "test"]
         self.split = split
 
-        if split == "train":
-            names = ["coco_caption_karpathy_train", "coco_caption_karpathy_restval", "coco_caption_karpathy_val", "coco_caption_karpathy_test"]
+        if split == "train":#["coco_caption_karpathy_test.arrow"]#
+            names = ["coco_caption_karpathy_train.arrow", "coco_caption_karpathy_restval.arrow", "coco_caption_karpathy_val.arrow", "coco_caption_karpathy_test.arrow"]
+            #["coco_caption_karpathy_train", "coco_caption_karpathy_restval", "coco_caption_karpathy_val", "coco_caption_karpathy_test"]
+            #
                     
         elif split == "val":
             # names = ["coco_caption_karpathy_val"]

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
+import cv2
 
 from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, BertModel, BertEncoder, BertLayer
 from .bert_model import BertCrossLayer, BertAttention
@@ -13,10 +14,21 @@ from transformers import RobertaConfig, RobertaModel
 from transformers import AutoModel, T5Model
 
 
+from transformers import (
+    DataCollatorForLanguageModeling,
+    DataCollatorForWholeWordMask,
+    BertTokenizer,
+    RobertaTokenizer,
+    AutoTokenizer,
+    T5Tokenizer,
+)
+
 class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
+
+        self.masking_strategy = config['masking_strategy']
 
         self.is_clip= (not 'swin' in config['vit'])
 
@@ -94,6 +106,7 @@ class METERTransformerSS(pl.LightningModule):
             print("text_transformer: BERT!")
             self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
             
+        # self.Tokenizer = RobertaTokenizer.from_pretrained(config['tokenizer'], cache_dir="/data/qbwang/public")
 
         self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
@@ -120,6 +133,8 @@ class METERTransformerSS(pl.LightningModule):
                 vs = self.hparams.config["okvqa_label_size"]
             elif "vqav2" in self.hparams.config["datasets"]:
                 vs = self.hparams.config["vqav2_label_size"]
+            elif "aokvqa" in self.hparams.config["datasets"]:
+                vs = self.hparams.config["aokvqa_label_size"]
 
             self.vqa_classifier = nn.Sequential(
                 nn.Linear(hs * 2, hs * 2),
@@ -128,6 +143,16 @@ class METERTransformerSS(pl.LightningModule):
                 nn.Linear(hs * 2, vs),
             )
             self.vqa_classifier.apply(objectives.init_weights)
+
+        if self.hparams.config["loss_names"]["classifier"] > 0:
+
+            self.classifier = nn.Sequential(
+                nn.Linear(hs * 2, hs * 2),
+                nn.LayerNorm(hs * 2),
+                nn.GELU(),
+                nn.Linear(hs * 2, 2),
+            )
+            self.classifier.apply(objectives.init_weights)
 
         # ===================== Downstream ===================== #
         if (
@@ -216,7 +241,9 @@ class METERTransformerSS(pl.LightningModule):
         do_mlm = "_mlm" if mask_text else ""
         text_ids = batch[f"text_ids{do_mlm}"]
         text_labels = batch[f"text_labels{do_mlm}"]
-        text_masks = batch[f"text_masks"]
+        text_masks = batch["text_masks"]
+
+        # print([self.Tokenizer.tokenize(item) for item in batch["text"]])
 
         text_embeds = self.text_transformer.embeddings(input_ids=text_ids)
 
@@ -229,8 +256,9 @@ class METERTransformerSS(pl.LightningModule):
             text_embeds = layer(text_embeds, extend_text_masks)[0]
         text_embeds = self.cross_modal_text_transform(text_embeds)
 
-        # print(img.shape)
+        
         image_embeds = self.vit_model(img)
+
         # print(image_embeds.shape)
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
@@ -246,10 +274,37 @@ class METERTransformerSS(pl.LightningModule):
 
         x, y = text_embeds, image_embeds
 
+        text_self_attention = None
+        text_cross_attention = None
+        origin_image_cross_attention = None
+
         for text_layer, image_layer in zip(self.cross_modal_text_layers, self.cross_modal_image_layers):
             x1 = text_layer(x, y, extend_text_masks, extend_image_masks)
             y1 = image_layer(y, x, extend_image_masks, extend_text_masks)
             x, y = x1[0], y1[0]
+
+
+
+            if self.masking_strategy == "entity_masking":
+
+                # print(x1[1].shape) #torch.Size([8, 12, 50, 50])
+                # print(x1[2].shape) #torch.Size([8, 12, 50, 325])
+                # print(y1[1].shape) #torch.Size([8, 12, 325, 325])
+                # print(y1[2].shape) #torch.Size([8, 12, 325, 50])
+            
+                if text_self_attention == None:  
+                    text_self_attention = x1[1].sum(-2).sum(1).unsqueeze(1)
+                    text_cross_attention = y1[2].sum(-2).sum(1).unsqueeze(1)
+                    origin_image_cross_attention = x1[2].unsqueeze(1)
+
+                else:
+                    text_self_attention = torch.cat((text_self_attention, x1[1].sum(-2).sum(1).unsqueeze(1)), 1)
+                    text_cross_attention = torch.cat((text_cross_attention, y1[2].sum(-2).sum(1).unsqueeze(1)), 1)
+                    origin_image_cross_attention = torch.cat((origin_image_cross_attention, x1[2].unsqueeze(1)), 1)
+        
+        #print(origin_image_cross_attention.shape) torch.Size([8, 6，12, 50, 325])
+                
+        
 
         text_feats, image_feats = x, y
         cls_feats_text = self.cross_modal_text_pooler(x)
@@ -269,6 +324,21 @@ class METERTransformerSS(pl.LightningModule):
             "text_masks": text_masks,
         }
 
+        # print(origin_image_cross_attention[:,:,:,:,:].mean(1).mean(1).shape)
+        # exit()
+        if self.masking_strategy == "entity_masking":
+            # print(text_cross_attention[:,-1,:])
+            # print(text_cross_attention.mean(1).shape)
+
+            # ret.update({"text_attention": text_cross_attention[:,-1,:]})
+            ret.update({"text_attention": text_cross_attention.mean(1),
+                        "origin_image_cross_attention": origin_image_cross_attention[:,0,:,:,:].mean(1),
+                        # "origin_image_cross_attention": origin_image_cross_attention[:,:,:,:,:].mean(1).mean(1),#
+                        "image": img
+                        })
+            # ret.update({"text_attention": text_cross_attention[:,0,:]})
+
+            ret.update({"text_attention": text_cross_attention.mean(1)+text_self_attention.mean(1)})
 
         return ret
 
@@ -290,6 +360,9 @@ class METERTransformerSS(pl.LightningModule):
         if "vqa" in self.current_tasks:
             ret.update(objectives.compute_vqa(self, batch))
 
+        if "classifier" in self.current_tasks:
+            ret.update(objectives.compute_classifier(self, batch))
+
         # Natural Language for Visual Reasoning 2
         if "nlvr2" in self.current_tasks:
             ret.update(objectives.compute_nlvr2(self, batch))
@@ -308,6 +381,15 @@ class METERTransformerSS(pl.LightningModule):
         meter_utils.set_task(self)
         output = self(batch)
         total_loss = sum([v for k, v in output.items() if "loss" in k])
+
+        # # Only one dataset is supported
+        # if self.masking_strategy == "entity_masking":
+        #     # self.trainer.datamodule.dms[0].train_dataset.text_attention.update(list(zip(output["text_attention"][0],output["text_attention"][1])))#[output["text_attention"][0][0]] = (output["text_attention"][1][0], output["text_attention"][2][0])
+        #     # print(self.trainer.datamodule.dms[0].train_dataset.text_attention[output["text_attention"][0][0]].shape)
+        #     print(len(self.trainer.datamodule.dms[0].train_dataset.text_attention))
+
+        #     # exit()
+        
 
         return total_loss
 

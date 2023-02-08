@@ -76,6 +76,7 @@ class BaseDataModule(LightningDataModule):
         self.tokenizer = get_pretrained_tokenizer(tokenizer)
         self.vocab_size = self.tokenizer.vocab_size
         self.masking_strategy = _config["masking_strategy"]
+
         if self.masking_strategy == "token_masking":
             collator = (DataCollatorForLanguageModeling)
             self.mlm_collator = collator(
@@ -91,6 +92,7 @@ class BaseDataModule(LightningDataModule):
             # self.mlm_collator = collator(
             # tokenizer=self.tokenizer, mlm=True, mlm_probability=_config["mlm_prob"]
             # )
+
             collator = (DataCollatorForLanguageModeling)
             self.mlm_collator = collator(
             tokenizer=self.tokenizer, mlm=False

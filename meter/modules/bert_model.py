@@ -464,8 +464,10 @@ class BertCrossLayer(nn.Module):
         encoder_hidden_states,
         attention_mask=None,
         encoder_attention_mask=None,
-        output_attentions=False,
+        output_attentions=True,
     ):
+        # output_attentions = True
+
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = None #past_key_value[:2] if past_key_value is not None else None
         self_attention_outputs = self.attention(
@@ -475,12 +477,15 @@ class BertCrossLayer(nn.Module):
             output_attentions=output_attentions,
             past_key_value=None,
         )
+
         attention_output = self_attention_outputs[0]
 
         # if decoder, the last output is tuple of self-attn cache
         outputs = self_attention_outputs[1:]  # add self attentions if we output attention weights
 
+
         cross_attn_present_key_value = None
+
         cross_attention_outputs = self.crossattention(
             attention_output,
             attention_mask,
@@ -491,7 +496,10 @@ class BertCrossLayer(nn.Module):
             output_attentions,
         )
         attention_output = cross_attention_outputs[0]
-        outputs = outputs + cross_attention_outputs[1:-1]  # add cross attentions if we output attention weights
+
+
+        # outputs = outputs + cross_attention_outputs[1:-1]  # add cross attentions if we output attention weights
+        outputs = outputs + cross_attention_outputs[1:]
 
         layer_output = apply_chunking_to_forward(
             self.feed_forward_chunk, self.chunk_size_feed_forward, self.seq_len_dim, attention_output

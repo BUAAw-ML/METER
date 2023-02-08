@@ -15,6 +15,7 @@ def _loss_names(d):
         "irtr": 0,
         "contras": 0,
         "snli": 0,
+        "classifier": 0,
     }
     ret.update(d)
     return ret
@@ -40,6 +41,7 @@ def config():
     # Text Setting
     vqav2_label_size = 3129
     okvqa_label_size = 5117
+    aokvqa_label_size = 5731
     max_text_len = 40
     tokenizer = "bert-base-uncased"
     vocab_size = 30522
@@ -97,7 +99,7 @@ def task_mlm_itm_clip_bert():
     loss_names = _loss_names({"itm": 1, "mlm": 1}) #
     batch_size = 4096
     max_epoch = 5#10
-    max_steps = 4000#100000
+    max_steps = 2500#100000
     warmup_steps = 0.1
     masking_strategy = "whole_word_masking"
 
@@ -143,7 +145,7 @@ def task_finetune_vqa_clip_bert():
     datasets = ["vqav2"]#["vqa"]
     loss_names = _loss_names({"vqa": 1})
     batch_size = 512
-    max_epoch = 10
+    max_epoch = 50
     max_steps = None
     warmup_steps = 0.1
     draw_false_image = 0
@@ -183,6 +185,55 @@ def task_finetune_okvqa_clip_bert():
     val_transform_keys = ["clip"]
     input_image_embed_size = 768
     image_size = 576
+
+
+@ex.named_config
+def task_finetune_aokvqa_clip_bert():
+    exp_name = "finetune_aokvqa"
+    datasets = ["aokvqa"]
+    loss_names = _loss_names({"vqa": 1})
+    batch_size = 512
+    max_epoch = 200
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-6
+    val_check_interval = 1.0
+    lr_mult_head = 50
+    lr_mult_cross_modal = 5
+    tokenizer = "bert-base-uncased"
+    max_text_len = 50
+    input_text_embed_size = 768
+    vit = 'ViT-B/32'
+    train_transform_keys = ["clip"]
+    val_transform_keys = ["clip"]
+    input_image_embed_size = 768
+    image_size = 576
+
+
+@ex.named_config
+def task_finetune_foilcoco_clip_bert():
+    exp_name = "finetune_foilcoco"
+    datasets = ["foilcoco"]
+    loss_names = _loss_names({"classifier": 1})
+    batch_size = 512
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-6
+    val_check_interval = 1.0#0.1
+    lr_mult_head = 50
+    lr_mult_cross_modal = 5
+    tokenizer = "bert-base-uncased"
+    max_text_len = 50
+    input_text_embed_size = 768
+    vit = 'ViT-B/32'
+    train_transform_keys = ["clip"]
+    val_transform_keys = ["clip"]
+    input_image_embed_size = 768
+    image_size = 576
+    num_workers = 2
 
 @ex.named_config
 def task_finetune_irtr_coco_clip_bert():
@@ -234,7 +285,7 @@ def task_finetune_snli_clip_bert():
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
-    max_epoch = 5
+    max_epoch = 10
     max_steps = None
     warmup_steps = 0.1
     draw_false_image = 0

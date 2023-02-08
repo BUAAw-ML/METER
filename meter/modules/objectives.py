@@ -9,20 +9,145 @@ import functools
 
 from torch.utils.data.distributed import DistributedSampler
 from einops import rearrange
+import numpy as np
 
 from .dist_utils import all_gather
 
+from PIL import Image
+from torchvision import utils,transforms
+from visualize import visualize_grid_attention_v2
+
+from copy import deepcopy
+
+
+def probe(img, text_self_attention = None, text_cross_attention = None,  image_self_attention = None, image_cross_attention = None):
+
+    # text_self_attention #torch.Size([8, 12, 50, 50])
+    # image_cross_attention #torch.Size([8, 12, 50, 325])
+    # image_self_attention #torch.Size([8, 12, 325, 325])
+    #text_cross_attention  #torch.Size([8, 12, 325, 50])
+
+
+    ii = img[0].cpu().permute(1,2,0)*torch.tensor([0.26862954, 0.26130258, 0.27577711]) + torch.tensor([0.48145466, 0.4578275, 0.40821073])
+    image=transforms.ToPILImage()(ii.permute(2,0,1))
+    image.save('cat2.png')
+
+    image_cross_attention = image_cross_attention.mean(1)
+    grid = (image_cross_attention.shape[1] - 1) ** 0.5
+
+    grid = int(grid)
+
+    jj=image_cross_attention[:,1:].reshape(image_cross_attention.shape[0],grid,grid)
+    
+    jj = jj.cpu().numpy()
+
+    jj=np.repeat(jj,16,axis=-1)
+    jj=np.repeat(jj,16,axis=-2)
+
+    # print((text_cross_attention.mean(1)).shape)
+    # print((torch.max(text_cross_attention.mean(1),-1)))
+
+    # mask = cv2.resize(attention_mask, (img_h, img_w))
+    # print(mask.max())
+
+    normed_mask = jj[0] / jj[0].max()
+    normed_mask = (normed_mask * 255).astype('uint8')
+
+    img_path='cat2.png'
+    save_path="test"
+    # attention_mask = np.random.randn(14, 14)
+    visualize_grid_attention_v2(img_path,
+                                save_path=save_path,
+                                attention_mask=normed_mask,
+                                save_image=True,
+                                save_original_image=True,
+                                quality=100)
+
+
+    # print((text_cross_attention.mean(1) > 0.5).shape)
+    # print((text_cross_attention.mean(1) > 0.5).sum(-1))
+    # print((image_cross_attention.mean(-2) > 0.5).sum(-1))
+    exit()
 
 def compute_mlm(pl_module, batch):
+
+    if "text_entities_masks_info" in batch:
+
+        print(batch["text"][0])#
+        # print(pl_module.trainer.datamodule.dms[0].train_dataset.tokenizer.tokenize(batch["text"][0])[:50])
+        # print(batch["text_entities_masks_info"].sum(-1).gt(0))
+        
+        infer = pl_module.infer(batch, mask_text=True, mask_image=False)
+        
+        entities_attention = infer["text_attention"] * batch["text_entities_masks_info"].sum(-1).gt(0)  #( ~ batch["text_entities_masks"].bool())
+
+        threshold = torch.max(torch.cat((entities_attention.sort(1, descending=True)[0][:,-1].unsqueeze(-1), torch.tensor([0.00001] * batch["text_entities_masks_info"].shape[0]).cuda(entities_attention.device).unsqueeze(-1)),dim=-1),-1, keepdim=True)[0]
+
+        target_entities_position = entities_attention.ge(threshold).unsqueeze(-2) #entities_attention.max(1, keepdim=True)[0]
+        
+        text_entities_masks = torch.matmul(target_entities_position.float(), batch["text_entities_masks_info"].float()).squeeze(1).bool()
+        # print(text_entities_masks[0].unsqueeze(0))
+        # image_cross_attention2entities = text_entities_masks[0].unsqueeze(0).unsqueeze(-1) * infer["origin_image_cross_attention"].detach()
+        # probe(infer["image"], image_cross_attention=image_cross_attention2entities)
+
+
+        text_ids_mlm = deepcopy(batch["text_ids_mlm"])
+        batch["text_labels_mlm"].masked_fill_(~text_entities_masks, value=-100) #Mask tensor can take 0 and 1 values only
+        batch["text_ids_mlm"].masked_fill_(text_entities_masks, value=batch["mask_token"])
+        
+        # print(batch["text_labels_mlm"])
+        # print(batch["text_ids_mlm"])
+        # exit()
+
     infer = pl_module.infer(batch, mask_text=True, mask_image=False)
+
     mlm_logits = pl_module.mlm_score(infer["text_feats"])
     mlm_labels = infer["text_labels"]
+
+    if "text_entities_masks_info" in batch:
+
+        # print(mlm_logits.shape)
+        # print(mlm_labels.shape)
+
+        mlm_labels2= deepcopy(mlm_labels)
+        mlm_labels2[mlm_labels==-100] = 0
+
+        a = F.log_softmax(mlm_logits, dim=-1)
+        b = F.one_hot(mlm_labels2, pl_module.hparams.config["vocab_size"])
+        c = (-a * b)
+        c = c.sum(-1)
+        c[mlm_labels==-100] = 0
+        # print(c)
+        # print(c.shape)
+        target_entities_position = c.ge(c.sort(-1, descending=False)[0][:,4].unsqueeze(-1)).unsqueeze(-2)
+        
+        text_entities_masks = torch.matmul(target_entities_position.float(), batch["text_entities_masks_info"].float()).squeeze(1).bool()
+        batch["text_labels_mlm"].masked_fill_(~text_entities_masks, value=-100) #Mask tensor can take 0 and 1 values only
+
+        # image_cross_attention2entities = text_entities_masks[0].unsqueeze(0).unsqueeze(-1) * infer["origin_image_cross_attention"].detach()
+        # probe(infer["image"], image_cross_attention=image_cross_attention2entities)
+
+        text_ids_mlm.masked_fill_(text_entities_masks, value=batch["mask_token"])
+        batch["text_ids_mlm"] = text_ids_mlm
+        # print(batch["text_labels_mlm"])
+        # print(batch["text_ids_mlm"])
+
+        # exit()
+        # mlm_loss = (c.sum(-1) / (c != 0).sum(-1)).mean() 
+            # exit()
+
+        infer = pl_module.infer(batch, mask_text=True, mask_image=False)
+
+        mlm_logits = pl_module.mlm_score(infer["text_feats"])
+        mlm_labels = infer["text_labels"]
 
     mlm_loss = F.cross_entropy(
         mlm_logits.view(-1, pl_module.hparams.config["vocab_size"]),
         mlm_labels.view(-1),
         ignore_index=-100,
     )
+
+
 
     ret = {
         "mlm_loss": mlm_loss,
@@ -145,6 +270,8 @@ def compute_vqa(pl_module, batch):
         vs = pl_module.hparams.config["okvqa_label_size"]
     elif "vqav2" in pl_module.hparams.config["datasets"]:
         vs = pl_module.hparams.config["vqav2_label_size"]
+    elif "aokvqa" in pl_module.hparams.config["datasets"]:
+        vs = pl_module.hparams.config["aokvqa_label_size"]
 
     vqa_targets = torch.zeros(
         len(vqa_logits), vs
@@ -179,6 +306,34 @@ def compute_vqa(pl_module, batch):
     pl_module.log(f"vqa/{phase}/score", score)
 
     return ret
+
+def compute_classifier(pl_module, batch):
+    infer = pl_module.infer(batch, mask_text=False, mask_image=False)
+    logits = pl_module.classifier(infer["cls_feats"])
+
+    labels = torch.tensor(batch['foil']).to(pl_module.device).long()
+
+    loss = F.cross_entropy(
+        logits.view(-1, 2),
+        labels.view(-1)
+    )
+
+    ret = {
+        "loss": loss,
+        "logits": logits,
+        "labels": labels,
+    }
+
+    phase = "train" if pl_module.training else "val"
+    loss = getattr(pl_module, f"{phase}_classifier_loss")(ret["loss"])
+    acc = getattr(pl_module, f"{phase}_classifier_accuracy")(
+        ret["logits"], ret["labels"]
+    )
+    pl_module.log(f"classifier/{phase}/loss", loss)
+    pl_module.log(f"classifier/{phase}/accuracy", acc)
+
+    return ret
+
 
 
 def compute_nlvr2(pl_module, batch):

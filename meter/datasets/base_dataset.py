@@ -88,17 +88,21 @@ class BaseDataset(torch.utils.data.Dataset):
 
             #         tables[i] = pa.Table.from_pandas(pandas_table)
 
-
+            data_index = 1
             self.table_names = list()
             for i, name in enumerate(names):
                 self.table_names += [name] * len(tables[i])
-            self.table = pa.concat_tables(tables, promote=True)
+            self.table = pa.concat_tables(tables, promote=True)#[data_index:data_index+1]
 
             print(f'Columns of data table!:{self.table.to_pandas().columns.values}')
-
-            # pd.set_option('max_colwidth',1000)
-            # print(self.table.to_pandas()[:20][['caption','caption_entities']])
+            
+            # pd.set_option('max_colwidth',1000)    
+            # pd.set_option('display.max_columns',2)
+            # print(self.table.to_pandas()[:1])#[['sentences','labels']])
+            # # print(self.table.to_pandas()[2:5][['caption','caption_entities']])
+            # # print(self.table.to_pandas()[:2][['caption','info']])
             # exit()
+
 
             print(f'Data table size: {len(self.table)}!')
             if text_column_name != "":
@@ -133,17 +137,18 @@ class BaseDataset(torch.utils.data.Dataset):
         else:
             for i in range(len(self.table)): 
                 self.index_mapper[i] = (i, None)
-        
 
 
         if self.masking_strategy == 'entity_masking':
+
             self.tokenizer = tokenizer#BertTokenizer.from_pretrained("bert-base-uncased")#tokenizer
 
             self.texts_entity_mask_ratio = 0
             self.texts_num = 0
 
             if 'roberta' in tokenizer.name_or_path:
-                self.text_entities_mask = self.get_entities_roberta()
+                self.text_entities_mask_info = self.get_entities_roberta()
+
 
             elif 'bert' in tokenizer.name_or_path:
                 self.text_entities_mask = self.get_entities_bert()
@@ -168,9 +173,12 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def get_raw_image(self, index, image_key="image"):
         index, caption_index = self.index_mapper[index]
+
         image_bytes = io.BytesIO(self.table[image_key][index].as_py())
 
         image_bytes.seek(0)
+
+
         if self.clip_transform:
             return Image.open(image_bytes).convert("RGBA")
         else:
@@ -179,6 +187,7 @@ class BaseDataset(torch.utils.data.Dataset):
     def get_image(self, index, image_key="image"):
         image = self.get_raw_image(index, image_key=image_key)
         image_tensor = [tr(image) for tr in self.transforms]
+
         return {
             "image": image_tensor,
             "img_index": self.index_mapper[index][0],
@@ -195,6 +204,7 @@ class BaseDataset(torch.utils.data.Dataset):
     def get_text(self, raw_index):
         index, caption_index = self.index_mapper[raw_index]
         text = self.all_texts[index][caption_index]
+
         encoding = self.tokenizer(
             text,
             padding="max_length",
@@ -205,10 +215,10 @@ class BaseDataset(torch.utils.data.Dataset):
 
         # encoding["raw_index"] = raw_index
         # print(self.split)
-        # print(self.masking_strategy)
+
         if self.masking_strategy == 'entity_masking':
             return {
-                "text": (text, encoding, self.text_entities_mask[index][caption_index]),
+                "text": (text, encoding, self.text_entities_mask_info[index][caption_index]),
                 "img_index": index,
                 "cap_index": caption_index,
                 "raw_index": raw_index
@@ -234,7 +244,7 @@ class BaseDataset(torch.utils.data.Dataset):
             return_special_tokens_mask=True,
         )
         if self.masking_strategy == 'entity_masking':
-            return {f"false_text_{rep}": (text, encoding, self.text_entities_mask[index][caption_index])}
+            return {f"false_text_{rep}": (text, encoding, self.text_entities_mask_info[index][caption_index])}
         else:
             return {f"false_text_{rep}": (text, encoding)}
 
@@ -317,22 +327,25 @@ class BaseDataset(torch.utils.data.Dataset):
             draw_text_len = len(encodings)
             flatten_encodings = [e for encoding in encodings for e in encoding]
 
-            
             flatten_mlms = mlm_collator(flatten_encodings)
             # print(mlm_collator.mlm)
+
             if len(dict_batch["text"][0])==3: #self.masking_strategy == 'entity_masking':# and self.split == 'train':
-                
-                # print(self.tokenizer.tokenize(dict_batch["text"][0][0]))
-                text_entities_mask = [[d[2] for d in dict_batch[txt_key]] for txt_key in txt_keys]
-                # print(text_entities_mask)
-                flatten_text_entities_mask  = np.array([e for text_entitie_mask  in text_entities_mask  for e in text_entitie_mask])
-                # print(flatten_mlms["labels"].shape)
-                # print(torch.tensor(flatten_text_entities_mask).shape)
-                flatten_mlms["labels"].masked_fill_(torch.tensor(flatten_text_entities_mask), value=-100)
-                flatten_mlms["input_ids"].masked_fill_(torch.tensor(1- flatten_text_entities_mask), value=self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token))
-                # print(flatten_mlms["input_ids"])
-                # print(flatten_mlms["labels"])
-                # exit()
+
+
+                for i, txt_key in enumerate(txt_keys):
+                    text_entities_mask_info = [d[2] for d in dict_batch[txt_key]]
+                    dict_batch[f"{txt_key}_entities_masks_info"] = torch.tensor(text_entities_mask_info)
+                dict_batch["mask_token"] = self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token)
+                # # print(text_entities_mask)
+                # flatten_text_entities_mask  = np.array([e for text_entitie_mask  in text_entities_mask  for e in text_entitie_mask])
+                # # print(flatten_mlms["labels"].shape)
+                # # print(torch.tensor(flatten_text_entities_mask).shape)
+                # flatten_mlms["labels"].masked_fill_(torch.tensor(flatten_text_entities_mask), value=-100)
+                # flatten_mlms["input_ids"].masked_fill_(torch.tensor(1- flatten_text_entities_mask), value=self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token))
+                # # print(flatten_mlms["input_ids"])
+                # # print(flatten_mlms["labels"])
+                # # exit()
 
             for i, txt_key in enumerate(txt_keys):
                 texts, encodings = (
@@ -367,9 +380,10 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def get_entities_roberta(self):
         
-        text_entities_mask = []
+
+        text_entities_mask_info = []
         for index, item in enumerate(tqdm.tqdm(self.all_texts, desc = "Extract entities!")):
-            item_entities_mask = []
+            item_entities_mask_info = []
 
             # for _, entity in enumerate(self.text_entities[index]):
             #     encoding_entities_ids.append(self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(entity)))
@@ -386,13 +400,12 @@ class BaseDataset(torch.utils.data.Dataset):
                     max_length=self.max_text_len,
                     return_special_tokens_mask=True,
                 )
+                
+                item_entities_mask_info.append(self.exclude_non_entities_roberta(encoding["input_ids"], self.text_entities[index], encoding["special_tokens_mask"]))
+                
+            text_entities_mask_info.append(item_entities_mask_info)
 
-                item_entities_mask.append(self.exclude_non_entities_roberta(encoding["input_ids"], self.text_entities[index], encoding["special_tokens_mask"]))
-            text_entities_mask.append(item_entities_mask)
-            # print(item_entities_mask)
-            # exit()
-
-        return text_entities_mask 
+        return text_entities_mask_info
 
 
     def exclude_non_entities_roberta(self, inputs, entities, special_tokens_mask):
@@ -402,6 +415,7 @@ class BaseDataset(torch.utils.data.Dataset):
         sentence_entities_positions = []
         # sign =False
         # count = 0
+        entities_info = {}
         for entity_text in entities:
             # entity_text= entity_text.replace(' -','-')
             # entity_text= entity_text.replace('- ','-')
@@ -421,6 +435,9 @@ class BaseDataset(torch.utils.data.Dataset):
 
                         if random.random() >= self.entity_mlm_probability:
                             sentence_entities_positions.extend(sequence_ids)
+                            for id in sequence_ids:
+                                if id not in entities_info or len(sequence_ids) > len(entities_info[id]):
+                                    entities_info[id] = sequence_ids 
                         # sign = True
                         break
                      
@@ -433,14 +450,22 @@ class BaseDataset(torch.utils.data.Dataset):
         # print(count / len(entities))
 
         # print(len(sentence_entities_positions))
-        new_stm = []
+        # new_stm = []
+        new_stm_info = []
         for idx, _ in enumerate(special_tokens_mask):
+            entity_info = np.array([0] * len(special_tokens_mask))
             if idx in sentence_entities_positions:
-                new_stm.append(0)
+                # new_stm.append(0)
+                entity_info[entities_info[idx]] = 1
+                new_stm_info.append(entity_info)
             else:
-                new_stm.append(1)
+                # new_stm.append(1)
+                new_stm_info.append(entity_info)
+        
+        # print(torch.tensor(new_stm_info).sum(-1).gt(0))
+   
 
-        return new_stm
+        return new_stm_info
 
 
     def get_entities_bert(self):

@@ -187,13 +187,18 @@ def set_schedule(pl_module):
     head_names = ["vqa_classifier", "nlvr2_classifier", "mlm_score", "itm_score", "snli_classifier"]
     cross_modal_names = ['cross_modal']
 
-    visual_encoder = ['vit_model']
+    visual_encoder = ['vit_model'] #
+    # text_encoder = ['text_transformer']
 
     lr_mult_head = pl_module.hparams.config["lr_mult_head"]
     lr_mult_cross_modal = pl_module.hparams.config["lr_mult_cross_modal"]
     end_lr = pl_module.hparams.config["end_lr"]
     decay_power = pl_module.hparams.config["decay_power"]
     optim_type = pl_module.hparams.config["optim_type"]
+
+    # for n, p in pl_module.named_parameters():
+    #     print(n)
+
 
     print("Froze vit_model!")
     optimizer_grouped_parameters = [
@@ -237,7 +242,8 @@ def set_schedule(pl_module):
             "params": [
                 p
                 for n, p in pl_module.named_parameters()
-                if any(nd in n for nd in no_decay) and any(bb in n for bb in head_names)
+                if any(nd in n for nd in no_decay) 
+                and any(bb in n for bb in head_names)
                 and not any(ht in n for ht in cross_modal_names)
                 and not any(ve in n for ve in visual_encoder)
             ],

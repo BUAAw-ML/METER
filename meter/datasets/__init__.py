@@ -8,3 +8,5 @@ from .nlvr2_dataset import NLVR2Dataset
 from .snli_dataset import SNLIDataset
 from .okvqa_dataset import OKVQADataset
 from .wit_caption_datase import WitCaptionDataset
+from .foilcoco_dataset import FOILCOCODataset
+from .aokvqa_dataset import AOKVQADataset
