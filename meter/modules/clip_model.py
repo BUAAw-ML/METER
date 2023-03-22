@@ -161,7 +161,7 @@ import hashlib
 import urllib
 from tqdm import tqdm
 import warnings
-def _download(url: str, root: str ="/data/qbwang/public"): #os.path.expanduser("~/.cache/clip")):
+def _download(url: str, root: str ="../public"): #os.path.expanduser("~/.cache/clip")):
     os.makedirs(root, exist_ok=True)
     filename = os.path.basename(url)
 

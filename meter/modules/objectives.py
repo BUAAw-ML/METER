@@ -15,7 +15,7 @@ from .dist_utils import all_gather
 
 from PIL import Image
 from torchvision import utils,transforms
-from visualize import visualize_grid_attention_v2
+# from visualize import visualize_grid_attention_v2
 
 from copy import deepcopy
 
@@ -62,6 +62,8 @@ def probe(img, text_self_attention = None, text_cross_attention = None,  image_s
                                 save_image=True,
                                 save_original_image=True,
                                 quality=100)
+    exit()
+
 
 
     # print((text_cross_attention.mean(1) > 0.5).shape)
@@ -73,7 +75,7 @@ def compute_mlm(pl_module, batch):
 
     if "text_entities_masks_info" in batch:
 
-        print(batch["text"][0])#
+        # print(batch["text"][0])#
         # print(pl_module.trainer.datamodule.dms[0].train_dataset.tokenizer.tokenize(batch["text"][0])[:50])
         # print(batch["text_entities_masks_info"].sum(-1).gt(0))
         
@@ -81,16 +83,15 @@ def compute_mlm(pl_module, batch):
         
         entities_attention = infer["text_attention"] * batch["text_entities_masks_info"].sum(-1).gt(0)  #( ~ batch["text_entities_masks"].bool())
 
-        threshold = torch.max(torch.cat((entities_attention.sort(1, descending=True)[0][:,-1].unsqueeze(-1), torch.tensor([0.00001] * batch["text_entities_masks_info"].shape[0]).cuda(entities_attention.device).unsqueeze(-1)),dim=-1),-1, keepdim=True)[0]
+        threshold = torch.max(torch.cat((entities_attention.sort(1, descending=True)[0][:,2].unsqueeze(-1), torch.tensor([0.00001] * batch["text_entities_masks_info"].shape[0]).cuda(entities_attention.device).unsqueeze(-1)),dim=-1),-1, keepdim=True)[0]
 
         target_entities_position = entities_attention.ge(threshold).unsqueeze(-2) #entities_attention.max(1, keepdim=True)[0]
         
         text_entities_masks = torch.matmul(target_entities_position.float(), batch["text_entities_masks_info"].float()).squeeze(1).bool()
         # print(text_entities_masks[0].unsqueeze(0))
+
         # image_cross_attention2entities = text_entities_masks[0].unsqueeze(0).unsqueeze(-1) * infer["origin_image_cross_attention"].detach()
         # probe(infer["image"], image_cross_attention=image_cross_attention2entities)
-
-
         text_ids_mlm = deepcopy(batch["text_ids_mlm"])
         batch["text_labels_mlm"].masked_fill_(~text_entities_masks, value=-100) #Mask tensor can take 0 and 1 values only
         batch["text_ids_mlm"].masked_fill_(text_entities_masks, value=batch["mask_token"])
@@ -119,14 +120,10 @@ def compute_mlm(pl_module, batch):
         c[mlm_labels==-100] = 0
         # print(c)
         # print(c.shape)
-        target_entities_position = c.ge(c.sort(-1, descending=False)[0][:,4].unsqueeze(-1)).unsqueeze(-2)
+        target_entities_position = c.ge(c.sort(-1, descending=True)[0][:,0].unsqueeze(-1)).unsqueeze(-2)
         
         text_entities_masks = torch.matmul(target_entities_position.float(), batch["text_entities_masks_info"].float()).squeeze(1).bool()
         batch["text_labels_mlm"].masked_fill_(~text_entities_masks, value=-100) #Mask tensor can take 0 and 1 values only
-
-        # image_cross_attention2entities = text_entities_masks[0].unsqueeze(0).unsqueeze(-1) * infer["origin_image_cross_attention"].detach()
-        # probe(infer["image"], image_cross_attention=image_cross_attention2entities)
-
         text_ids_mlm.masked_fill_(text_entities_masks, value=batch["mask_token"])
         batch["text_ids_mlm"] = text_ids_mlm
         # print(batch["text_labels_mlm"])

@@ -1,6 +1,6 @@
 from sacred import Experiment
 
-ex = Experiment("METER")
+ex = Experiment("METER", save_git_info=False)
 
 
 def _loss_names(d):
@@ -65,7 +65,7 @@ def config():
     learning_rate = 1e-5
     weight_decay = 0.01
     decay_power = 1
-    max_epoch = 5 #100
+    max_epoch = 100
     max_steps = 100000
     warmup_steps = 10000
     end_lr = 0
@@ -94,12 +94,12 @@ def config():
 
 @ex.named_config
 def task_mlm_itm_clip_bert():
-    exp_name = "mlm_itm"
-    datasets = ["wit"]#, "vg", "sbu", "gcc"]#["coco"]#
+    exp_name = "mlm_itm_lastlayer"
+    datasets = ["gcc"]#["coco"]#["wit"]#, "vg", "sbu", "gcc"]#["coco"]#
     loss_names = _loss_names({"itm": 1, "mlm": 1}) #
     batch_size = 4096
-    max_epoch = 5#10
-    max_steps = 2500#100000
+    max_epoch = 10
+    max_steps = 100000
     warmup_steps = 0.1
     masking_strategy = "whole_word_masking"
 
@@ -145,7 +145,7 @@ def task_finetune_vqa_clip_bert():
     datasets = ["vqav2"]#["vqa"]
     loss_names = _loss_names({"vqa": 1})
     batch_size = 512
-    max_epoch = 50
+    max_epoch = 20
     max_steps = None
     warmup_steps = 0.1
     draw_false_image = 0

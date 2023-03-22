@@ -18,11 +18,11 @@ def get_pretrained_tokenizer(from_pretrained):
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
             if 'roberta' in from_pretrained:
-                RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
+                RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="../public")
             elif 'LinkBERT' in from_pretrained:
-                AutoTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
+                AutoTokenizer.from_pretrained(from_pretrained, cache_dir="../public") 
             elif 't5-small' in from_pretrained:
-                T5Tokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
+                T5Tokenizer.from_pretrained(from_pretrained, cache_dir="../public") 
             else:
                 BertTokenizer.from_pretrained(
                     from_pretrained, do_lower_case="uncased" in from_pretrained
@@ -31,13 +31,13 @@ def get_pretrained_tokenizer(from_pretrained):
 
     if 'roberta' in from_pretrained:
         print("pretrained_tokenizer: roberta_Tokenizer!")
-        return RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
+        return RobertaTokenizer.from_pretrained(from_pretrained, cache_dir="../public", local_files_only=True) 
     elif 'LinkBERT' in from_pretrained:
         print("pretrained_tokenizer: LinkBERT_Tokenizer!")
-        return AutoTokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public")
+        return AutoTokenizer.from_pretrained(from_pretrained, cache_dir="../public")
     elif 't5-small' in from_pretrained:
         print("pretrained_tokenizer: t5-small!")
-        return T5Tokenizer.from_pretrained(from_pretrained, cache_dir="/data/qbwang/public") 
+        return T5Tokenizer.from_pretrained(from_pretrained, cache_dir="../public") 
     print("pretrained_tokenizer: Bert_Tokenizer")
     return BertTokenizer.from_pretrained(
         from_pretrained, do_lower_case="uncased" in from_pretrained

@@ -11,9 +11,9 @@ class ConceptualCaptionDataset(BaseDataset):
             split = "val"
 
         if split == "train":
-            names = [f"conceptual_caption_train_{i}" for i in range(31)]
+            names = [f"conceptual_caption_train_{i}.arrow" for i in range(28)]#28
         elif split == "val":
-            names = []
+            names = [f"conceptual_caption_val_{i}.arrow" for i in range(1)]
 
         super().__init__(*args, **kwargs, names=names, text_column_name="caption")
 
@@ -21,20 +21,22 @@ class ConceptualCaptionDataset(BaseDataset):
     def __getitem__(self, index):
         return self.get_suite(index)
 
-    def get_text(self, raw_index):
-        index, caption_index = self.index_mapper[raw_index]
+#####
 
-        text = self.all_texts[index][caption_index]
-        encoding = self.tokenizer(
-            text,
-            padding="max_length",
-            truncation=True,
-            max_length=self.max_text_len,
-            return_special_tokens_mask=True,
-        )
-        return {
-            "text": (text, encoding),
-            "img_index": index,
-            "cap_index": caption_index,
-            "raw_index": raw_index,
-        }
+    # def get_text(self, raw_index):
+    #     index, caption_index = self.index_mapper[raw_index]
+
+    #     text = self.all_texts[index][caption_index]
+    #     encoding = self.tokenizer(
+    #         text,
+    #         padding="max_length",
+    #         truncation=True,
+    #         max_length=self.max_text_len,
+    #         return_special_tokens_mask=True,
+    #     )
+    #     return {
+    #         "text": (text, encoding),
+    #         "img_index": index,
+    #         "cap_index": caption_index,
+    #         "raw_index": raw_index,
+    #     }

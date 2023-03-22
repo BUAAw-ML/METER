@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
-import cv2
+# import cv2
 
 from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, BertModel, BertEncoder, BertLayer
 from .bert_model import BertCrossLayer, BertAttention
@@ -75,13 +75,13 @@ class METERTransformerSS(pl.LightningModule):
                     )
 
                 if 'roberta' in config['tokenizer']:
-                    RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+                    RobertaModel.from_pretrained(config['tokenizer'],cache_dir="../public")
                 elif 'LinkBERT' in config['tokenizer']:
-                    AutoModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+                    AutoModel.from_pretrained(config['tokenizer'],cache_dir="../public")
                 elif 't5-small' in config['tokenizer']:
-                    T5Model.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+                    T5Model.from_pretrained(config['tokenizer'],cache_dir="../public")
                 else:
-                    BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+                    BertModel.from_pretrained(config['tokenizer'],cache_dir="../public")
 
             torch.distributed.barrier()
 
@@ -95,18 +95,18 @@ class METERTransformerSS(pl.LightningModule):
 
         if 'roberta' in config['tokenizer']:
             print("text_transformer: roberta!")
-            self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+            self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'],cache_dir="../public")
         elif 'LinkBERT' in config['tokenizer']:
             print("text_transformer: LinkBERT!")
-            self.text_transformer = AutoModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+            self.text_transformer = AutoModel.from_pretrained(config['tokenizer'],cache_dir="../public")
         elif 't5-small' in config['tokenizer']:
             print("text_transformer: t5-small!")
-            self.text_transformer = T5Model.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+            self.text_transformer = T5Model.from_pretrained(config['tokenizer'],cache_dir="../public")
         else:
             print("text_transformer: BERT!")
-            self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="/data/qbwang/public")
+            self.text_transformer = BertModel.from_pretrained(config['tokenizer'],cache_dir="../public")
             
-        # self.Tokenizer = RobertaTokenizer.from_pretrained(config['tokenizer'], cache_dir="/data/qbwang/public")
+        # self.Tokenizer = RobertaTokenizer.from_pretrained(config['tokenizer'], cache_dir="../../../public")
 
         self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
@@ -301,8 +301,7 @@ class METERTransformerSS(pl.LightningModule):
                     text_self_attention = torch.cat((text_self_attention, x1[1].sum(-2).sum(1).unsqueeze(1)), 1)
                     text_cross_attention = torch.cat((text_cross_attention, y1[2].sum(-2).sum(1).unsqueeze(1)), 1)
                     origin_image_cross_attention = torch.cat((origin_image_cross_attention, x1[2].unsqueeze(1)), 1)
-        
-        #print(origin_image_cross_attention.shape) torch.Size([8, 6，12, 50, 325])
+
                 
         
 
@@ -324,8 +323,6 @@ class METERTransformerSS(pl.LightningModule):
             "text_masks": text_masks,
         }
 
-        # print(origin_image_cross_attention[:,:,:,:,:].mean(1).mean(1).shape)
-        # exit()
         if self.masking_strategy == "entity_masking":
             # print(text_cross_attention[:,-1,:])
             # print(text_cross_attention.mean(1).shape)
@@ -333,12 +330,11 @@ class METERTransformerSS(pl.LightningModule):
             # ret.update({"text_attention": text_cross_attention[:,-1,:]})
             ret.update({"text_attention": text_cross_attention.mean(1),
                         "origin_image_cross_attention": origin_image_cross_attention[:,0,:,:,:].mean(1),
-                        # "origin_image_cross_attention": origin_image_cross_attention[:,:,:,:,:].mean(1).mean(1),#
                         "image": img
                         })
-            # ret.update({"text_attention": text_cross_attention[:,0,:]})
+            ret.update({"text_attention": text_cross_attention[:,-1,:]+text_self_attention[:,-1,:]})
 
-            ret.update({"text_attention": text_cross_attention.mean(1)+text_self_attention.mean(1)})
+            # ret.update({"text_attention": text_cross_attention.mean(1)+text_self_attention.mean(1)})
 
         return ret
 

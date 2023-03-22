@@ -49,6 +49,7 @@ class BaseDataset(torch.utils.data.Dataset):
         assert len(transform_keys) >= 1
         super().__init__()
 
+
         self.transforms = keys_to_transforms(transform_keys, size=image_size)
         self.clip_transform = False
         for transform_key in transform_keys:
@@ -88,16 +89,15 @@ class BaseDataset(torch.utils.data.Dataset):
 
             #         tables[i] = pa.Table.from_pandas(pandas_table)
 
-            data_index = 1
             self.table_names = list()
             for i, name in enumerate(names):
                 self.table_names += [name] * len(tables[i])
-            self.table = pa.concat_tables(tables, promote=True)#[data_index:data_index+1]
+            self.table = pa.concat_tables(tables, promote=True)#[:32]
 
-            print(f'Columns of data table!:{self.table.to_pandas().columns.values}')
+            # print(f'Columns of data table!:{self.table.to_pandas().columns.values}')
             
             # pd.set_option('max_colwidth',1000)    
-            # pd.set_option('display.max_columns',2)
+            # # pd.set_option('display.max_columns',2)
             # print(self.table.to_pandas()[:1])#[['sentences','labels']])
             # # print(self.table.to_pandas()[2:5][['caption','caption_entities']])
             # # print(self.table.to_pandas()[:2][['caption','info']])
@@ -202,6 +202,7 @@ class BaseDataset(torch.utils.data.Dataset):
         return {f"false_image_{rep}": image_tensor}
 
     def get_text(self, raw_index):
+
         index, caption_index = self.index_mapper[raw_index]
         text = self.all_texts[index][caption_index]
 
@@ -217,6 +218,7 @@ class BaseDataset(torch.utils.data.Dataset):
         # print(self.split)
 
         if self.masking_strategy == 'entity_masking':
+
             return {
                 "text": (text, encoding, self.text_entities_mask_info[index][caption_index]),
                 "img_index": index,
@@ -249,12 +251,15 @@ class BaseDataset(torch.utils.data.Dataset):
             return {f"false_text_{rep}": (text, encoding)}
 
     def get_suite(self, index):
+
         result = None
         while result is None:
             try:
                 ret = dict()
                 ret.update(self.get_image(index))
+
                 if not self.image_only:
+
                     txt = self.get_text(index)
                     ret.update({"replica": True if txt["cap_index"] > 0 else False})
                     ret.update(txt)
@@ -329,9 +334,8 @@ class BaseDataset(torch.utils.data.Dataset):
 
             flatten_mlms = mlm_collator(flatten_encodings)
             # print(mlm_collator.mlm)
-
+            # print(len(dict_batch["text"][0]))
             if len(dict_batch["text"][0])==3: #self.masking_strategy == 'entity_masking':# and self.split == 'train':
-
 
                 for i, txt_key in enumerate(txt_keys):
                     text_entities_mask_info = [d[2] for d in dict_batch[txt_key]]
